@@ -303,5 +303,29 @@
       "replace": "Substituir os dados deste dispositivo",
       "backup": "Fazer backup deste perfil"
     }
+  },
+  "lan": {
+    "title": "Sincronização Wi-Fi",
+    "description": "Sincronize este computador e um dispositivo móvel na rede local.",
+    "nativeOnly": "Use a aplicação nativa para computador ou telemóvel.",
+    "status": "Estado da ligação",
+    "join": "Ligar ao computador",
+    "host": "Partilhar do computador",
+    "instructions": "Mantenha o computador aberto e desbloqueado. As alterações sincronizam nos dois sentidos enquanto a aplicação móvel estiver visível.",
+    "paired": "Dispositivo emparelhado",
+    "waiting": "À espera do dispositivo móvel",
+    "pending": "Importação inicial pendente. Tente novamente quando o computador estiver disponível.",
+    "stopped": "O servidor local está parado. Inicie-o abaixo.",
+    "lastSync": "Última sincronização:",
+    "address": "Endereço e porta do computador",
+    "start": "Iniciar / mostrar convite",
+    "privateCode": "Este código dá acesso ao seu património. Partilhe apenas com o seu próprio dispositivo.",
+    "invitation": "Convite privado",
+    "emptyProfile": "Ligue a partir de um perfil vazio. A importação inicial copia a carteira do computador. Os dados móveis existentes estão protegidos.",
+    "scan": "Ler QR",
+    "saveAddress": "Guardar endereço",
+    "syncNow": "Sincronizar agora",
+    "disconnect": "Desligar",
+    "working": "A ligar e sincronizar…"
   }
 }

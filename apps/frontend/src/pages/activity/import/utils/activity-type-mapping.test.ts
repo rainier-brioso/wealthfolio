@@ -4,6 +4,27 @@ import { createDefaultActivityTemplate } from "./default-activity-template";
 import { findMappedActivityType } from "./activity-type-mapping";
 
 describe("activity-type-mapping", () => {
+  it.each(["PERIODO 12/08/2026 12/09/2026", " periodo  12/09/2026 12/10/2026 "])(
+    "recognizes MyInvestor interest periods: %s",
+    (label) => expect(findMappedActivityType(label, {})).toBe(ActivityType.INTEREST),
+  );
+
+  it.each([
+    "PERIODO",
+    "PERIODO 12/08/2026",
+    "PERIODO 12/08/2026 12/09/2026 COMISION",
+    "RETENCION PERIODO 12/08/2026 12/09/2026",
+  ])("does not infer interest from other period descriptions: %s", (label) => {
+    expect(findMappedActivityType(label, {})).toBeNull();
+  });
+
+  it("preserves explicit overrides for MyInvestor interest periods", () => {
+    const label = "PERIODO 12/08/2026 12/09/2026";
+    expect(findMappedActivityType(label, { [ActivityType.DEPOSIT]: [label] })).toBe(
+      ActivityType.DEPOSIT,
+    );
+  });
+
   it.each(Object.values(ActivityType).filter((type) => type !== ActivityType.UNKNOWN))(
     "treats exact canonical %s labels as explicit identity mappings",
     (type) => {

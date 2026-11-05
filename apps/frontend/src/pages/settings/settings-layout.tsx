@@ -91,6 +91,16 @@ export default function SettingsLayout() {
       {
         title: t("settings:nav.sections.connections"),
         items: [
+          ...(isTauri
+            ? [
+                {
+                  title: t("sync:lan.title"),
+                  href: "lan-sync",
+                  subtitle: t("sync:lan.description"),
+                  icon: <Icons.CloudSync2 className="size-5" />,
+                },
+              ]
+            : []),
           {
             title: t("settings:nav.items.connect"),
             href: "connect",
@@ -144,7 +154,7 @@ export default function SettingsLayout() {
         ],
       },
     ],
-    [t, hasMcpServer],
+    [t, hasMcpServer, isTauri],
   );
 
   // Check if we're on the main settings page (mobile) or a specific setting page

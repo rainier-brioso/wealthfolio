@@ -196,6 +196,8 @@ export function ProviderSettingsCard({
   const customUrlField = provider.connectionFields?.find(
     (field) => field.key === "baseUrl" || field.key === "customUrl",
   );
+  const apiKeyField = provider.connectionFields?.find((field) => field.key === "apiKey");
+  const supportsApiKey = provider.type === "api" || !!apiKeyField;
 
   // Combine catalog models with fetched models and saved favorites
   const allModels = useMemo(() => {
@@ -413,13 +415,17 @@ export function ProviderSettingsCard({
         <CollapsibleContent>
           <div className="mt-3 border-t pt-5">
             <div className="space-y-5">
-              {/* API Key Section (only for API providers) */}
-              {provider.type === "api" && (
+              {/* Credentials are optional for compatible local servers. */}
+              {supportsApiKey && (
                 <div className="bg-muted/40 rounded-lg p-4">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <Label htmlFor={`apikey-${provider.id}`} className="text-sm font-medium">
-                        {t("ai:providerSettings.apiKey")}
+                        {t(
+                          apiKeyField?.required === false
+                            ? "ai:providerSettings.apiKeyOptional"
+                            : "ai:providerSettings.apiKey",
+                        )}
                       </Label>
                       {provider.documentationUrl && (
                         <ExternalLink

@@ -7,6 +7,13 @@ import type {
 } from "@/lib/types";
 
 import { invoke } from "./platform";
+import type {
+  ImportMatchRequest,
+  ImportMatchResponse,
+} from "@/features/ai-assistant/import-matching-types";
+
+export const suggestImportMatches = (request: ImportMatchRequest): Promise<ImportMatchResponse> =>
+  invoke<ImportMatchResponse>("suggest_import_matches", { request });
 
 /**
  * Get all AI providers merged with user settings.

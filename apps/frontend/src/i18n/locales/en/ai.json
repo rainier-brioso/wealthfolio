@@ -558,6 +558,7 @@
     "default": "Default",
     "apiKeyRequired": "API key required",
     "apiKey": "API key",
+    "apiKeyOptional": "API key (optional)",
     "getApiKey": "Get API key",
     "enterApiKey": "Enter API key",
     "hideApiKey": "Hide API key",

@@ -558,6 +558,7 @@
     "default": "Standard",
     "apiKeyRequired": "API-Schlüssel erforderlich",
     "apiKey": "API-Schlüssel",
+    "apiKeyOptional": "API-Schlüssel (optional)",
     "getApiKey": "API-Schlüssel erhalten",
     "enterApiKey": "API-Schlüssel eingeben",
     "hideApiKey": "API-Schlüssel ausblenden",

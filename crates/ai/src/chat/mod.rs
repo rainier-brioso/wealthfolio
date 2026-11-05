@@ -14,7 +14,7 @@ mod attachments;
 mod csv_preview;
 mod history;
 pub(crate) mod provider_clients;
-mod request_params;
+pub(crate) mod request_params;
 #[cfg(test)]
 mod run_tests;
 mod streaming;
@@ -254,6 +254,13 @@ pub struct ChatService<E: AiEnvironment + 'static> {
 }
 
 impl<E: AiEnvironment + 'static> ChatService<E> {
+    /// Stateless suggestions; does not create a thread, persist input or expose app tools.
+    pub async fn suggest_import_matches(
+        &self,
+        request: crate::import_matching::ImportMatchRequest,
+    ) -> Result<crate::import_matching::ImportMatchResponse, AiError> {
+        crate::import_matching::suggest(self.env.clone(), request).await
+    }
     /// Create a new chat service.
     pub fn new(env: Arc<E>, config: ChatConfig) -> Self {
         Self {
@@ -390,6 +397,8 @@ impl<E: AiEnvironment + 'static> ChatService<E> {
             .unwrap_or_else(|| settings.model.clone());
         let config_snapshot =
             Self::thread_config_snapshot(&provider_service, &provider_id, &model_id);
+
+        provider_service.validate_custom_request(&provider_id, &model_id)?;
 
         // Get or create thread
         let (mut thread, is_new_thread, initial_title) = match &request.thread_id {

@@ -1,3 +1,10 @@
+import {
+  CALCULATED_UNIT_PRICE,
+  FIXED_ACTIVITY_TYPE_PREFIX,
+  fixedActivityType,
+  importFieldMapped,
+  isCalculatedMapping,
+} from "../utils/mapping-values";
 import { AccountSelector } from "@/components/account-selector";
 import TickerSearchInput from "@/components/ticker-search";
 import { Button } from "@wealthfolio/ui/components/ui/button";
@@ -43,21 +50,36 @@ export function MappingHeaderCell({
   mapping,
   headers,
   requiredFields = IMPORT_REQUIRED_FIELDS,
+  allowedActivityTypes,
   handleColumnMapping,
 }: {
   field: ImportFormat;
   mapping: ImportMappingData;
   headers: string[];
   requiredFields?: readonly ImportFormat[];
+  allowedActivityTypes?: readonly ActivityType[];
   handleColumnMapping: (field: ImportFormat, value: string) => void;
 }) {
   const { t } = useTranslation();
   const [editingHeader, setEditingHeader] = useState<ImportFormat | null>(null);
   const mappedHeader = mapping.fieldMappings[field];
   const displayHeader = Array.isArray(mappedHeader) ? mappedHeader[0] : mappedHeader;
-  const isMapped = displayHeader ? headers.includes(displayHeader) : false;
+  const fixedType = fixedActivityType(displayHeader);
+  const mappingLabel = fixedType
+    ? t("activity:import.mapping.fixedType", { type: fixedType })
+    : displayHeader === CALCULATED_UNIT_PRICE
+      ? t("activity:import.mapping.calculatedUnitPrice")
+      : displayHeader;
+  const isMapped = displayHeader
+    ? headers.includes(displayHeader) || isCalculatedMapping(displayHeader)
+    : false;
   const isEditing = editingHeader === field || !isMapped;
-  const isRequired = requiredFields.includes(field);
+  const isRequired =
+    requiredFields.includes(field) &&
+    !(
+      field === ImportFormat.SYMBOL &&
+      importFieldMapped(ImportFormat.ISIN, mapping.fieldMappings, headers)
+    );
   const skipLabel =
     field === ImportFormat.CURRENCY
       ? t("activity:import.mapping.accountCurrency")
@@ -83,7 +105,10 @@ export function MappingHeaderCell({
           // A required field has no skip item: unmapped, its value is null so the
           // trigger shows the "Select column" placeholder instead of an empty label.
           value={displayHeader || (isRequired ? null : SKIP_FIELD_VALUE)}
-          items={isRequired ? undefined : { [SKIP_FIELD_VALUE]: skipLabel }}
+          items={{
+            [SKIP_FIELD_VALUE]: skipLabel,
+            ...(displayHeader && mappingLabel ? { [displayHeader]: mappingLabel } : {}),
+          }}
           onOpenChange={(open) => !open && setEditingHeader(null)}
         >
           <SelectTrigger
@@ -105,6 +130,23 @@ export function MappingHeaderCell({
                 <SelectSeparator />
               </>
             )}
+            {field === ImportFormat.ACTIVITY_TYPE &&
+              Object.values(ActivityType)
+                .filter(
+                  (type) =>
+                    type !== ActivityType.UNKNOWN &&
+                    (!allowedActivityTypes || allowedActivityTypes.includes(type)),
+                )
+                .map((type) => (
+                  <SelectItem key={type} value={FIXED_ACTIVITY_TYPE_PREFIX + type}>
+                    {t("activity:import.mapping.fixedType", { type })}
+                  </SelectItem>
+                ))}
+            {field === ImportFormat.UNIT_PRICE && (
+              <SelectItem value={CALCULATED_UNIT_PRICE}>
+                {t("activity:import.mapping.calculatedUnitPrice")}
+              </SelectItem>
+            )}
             {headers.map((header) => (
               <SelectItem key={header || "-"} value={header || "-"}>
                 {header || "-"}
@@ -119,7 +161,7 @@ export function MappingHeaderCell({
           className="text-muted-foreground h-8 rounded-md py-0 ps-0 font-normal"
           onClick={() => setEditingHeader(field)}
         >
-          {displayHeader ||
+          {mappingLabel ||
             (isRequired
               ? t("activity:import.mapping.selectColumn")
               : t("activity:import.mapping.ignore"))}

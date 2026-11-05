@@ -4891,6 +4891,67 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn source_reconciliation_round_trips_through_sqlite_and_approval() {
+        let (pool, writer, _dir) = setup_db();
+        let repo = ActivityRepository::new(pool.clone(), writer);
+        let mut conn = get_connection(&pool).expect("conn");
+        insert_account(&mut conn, "source-account");
+        diesel::insert_into(assets::table)
+            .values((
+                assets::id.eq("source-fund"),
+                assets::kind.eq("INVESTMENT"),
+                assets::is_active.eq(1),
+                assets::quote_mode.eq("MARKET"),
+                assets::quote_ccy.eq("USD"),
+                assets::created_at.eq("2026-01-02T00:00:00+00:00"),
+                assets::updated_at.eq("2026-01-02T00:00:00+00:00"),
+            ))
+            .execute(&mut conn)
+            .expect("asset");
+        drop(conn);
+        let snapshot = serde_json::json!({
+            "version": 1, "issueCode": "myinvestor_settlement_difference", "reasonCode": "undetermined",
+            "tradeDate": "2026-01-02", "settlementDate": "2026-01-05", "operationReference": "TEST-1",
+            "isin": "IE000ZYRH0Q7", "sourceFile": "operations.xls", "sourceRow": 3, "currency": "USD",
+            "quantity": "2", "unitPrice": "24.99", "sourceAmount": "50", "settledAmount": "50",
+            "calculatedAmount": "49.98", "difference": "0.02",
+            "referenceUrl": "https://www.rankia.com/foros/fondos-inversion/temas/4472241-seguimiento-opiniones-myinvestor?page=575"
+        });
+        let imported: wealthfolio_core::activities::ActivityImport = serde_json::from_value(serde_json::json!({
+            "date": "2026-01-02", "symbol": "", "assetId": "source-fund", "activityType": "BUY",
+            "accountId": "source-account", "currency": "USD", "quantity": "2", "unitPrice": "24.99",
+            "amount": "50", "isValid": true, "isDraft": false, "sourceReconciliation": snapshot
+        })).unwrap();
+        let mut new_activity = NewActivity::from(imported);
+        new_activity.needs_review = Some(true);
+        let created = repo
+            .create_activity(new_activity)
+            .await
+            .expect("create buy");
+        assert_eq!(
+            created.metadata.as_ref().unwrap()["source_reconciliation"],
+            snapshot
+        );
+        let approval: ActivityUpdate = serde_json::from_value(serde_json::json!({
+            "id": created.id, "accountId": "source-account", "activityType": "BUY", "currency": "USD",
+            "activityDate": "2026-01-02", "needsReview": false
+        })).unwrap();
+        let approved = repo.update_activity(approval).await.expect("approve buy");
+        assert!(!approved.needs_review);
+        assert_eq!(
+            approved.metadata.unwrap()["source_reconciliation"],
+            snapshot
+        );
+        let reloaded = repo
+            .get_activity(&approved.id)
+            .expect("reload approved buy");
+        assert_eq!(
+            reloaded.metadata.unwrap()["source_reconciliation"],
+            snapshot
+        );
+    }
+
+    #[tokio::test]
     async fn update_activity_patches_subtype_and_review_independently() {
         let (pool, writer, _dir) = setup_db();
         let repo = ActivityRepository::new(pool.clone(), writer);

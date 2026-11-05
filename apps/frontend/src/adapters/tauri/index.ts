@@ -1,4 +1,5 @@
 // Tauri adapter - Desktop implementation
+export * from "./lan-sync";
 // This file re-exports all domain-specific modules
 
 import type { RunEnv } from "../types";

@@ -596,6 +596,7 @@
     "default": "Predeterminado",
     "apiKeyRequired": "Se requiere una clave de API",
     "apiKey": "Clave de API",
+    "apiKeyOptional": "Clave API (opcional)",
     "getApiKey": "Obtener clave de API",
     "enterApiKey": "Introduce la clave de API",
     "hideApiKey": "Ocultar clave de API",

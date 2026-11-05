@@ -596,6 +596,7 @@
     "default": "Predefinito",
     "apiKeyRequired": "Chiave API richiesta",
     "apiKey": "Chiave API",
+    "apiKeyOptional": "Chiave API (facoltativa)",
     "getApiKey": "Ottieni chiave API",
     "enterApiKey": "Inserisci la chiave API",
     "hideApiKey": "Nascondi chiave API",

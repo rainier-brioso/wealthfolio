@@ -375,6 +375,7 @@ export const COMMANDS: CommandMap = {
   get_net_worth_history: { method: "GET", path: "/net-worth/history" },
   // AI Providers
   get_ai_providers: { method: "GET", path: "/ai/providers" },
+  suggest_import_matches: { method: "POST", path: "/ai/import-matches" },
   update_ai_provider_settings: { method: "PUT", path: "/ai/providers/settings" },
   set_default_ai_provider: { method: "POST", path: "/ai/providers/default" },
   list_ai_models: { method: "GET", path: "/ai/providers" },
@@ -2081,6 +2082,7 @@ export const invoke = async <T>(command: string, payload?: Record<string, unknow
     // AI Providers
     case "get_ai_providers":
       break;
+    case "suggest_import_matches":
     case "update_ai_provider_settings": {
       const { request } = payload as { request: Record<string, unknown> };
       body = JSON.stringify(request);

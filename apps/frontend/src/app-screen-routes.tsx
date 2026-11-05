@@ -35,6 +35,7 @@ import MarketDataImportPage from "./pages/settings/market-data/market-data-impor
 import MarketDataSettingsPage from "./pages/settings/market-data/market-data-settings";
 import TaxonomiesPage from "./pages/settings/taxonomies/taxonomies-page";
 import ConnectSettingsPage from "./pages/settings/wealthfolio-connect/connect-settings-page";
+import LanSyncPage from "./pages/settings/lan-sync/lan-sync-page";
 import SpendingBudgetPage from "./features/spending/pages/spending-budget-page";
 import SpendingSettingsPage from "./pages/settings/spending/spending-settings-page";
 import SpendingSettingsCategoriesPage from "./pages/settings/spending/categories/spending-categories-page";
@@ -134,6 +135,7 @@ export const AppScreenRoutes = memo(function AppScreenRoutes({ location }: AppSc
         <Route path="securities" element={<AssetsPage />} />
         <Route path="taxonomies" element={<TaxonomiesPage />} />
         <Route path="connect" element={<ConnectSettingsPage />} />
+        <Route path="lan-sync" element={<LanSyncPage />} />
         <Route path="ai-providers" element={<AiProvidersPage />} />
         <Route path="agent-access" element={<AgentAccessPage />} />
         <Route path="addons" element={<AddonSettingsPage />} />

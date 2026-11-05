@@ -540,6 +540,7 @@
     "default": "デフォルト",
     "apiKeyRequired": "APIキーが必要です",
     "apiKey": "APIキー",
+    "apiKeyOptional": "API キー（任意）",
     "getApiKey": "APIキーを取得",
     "enterApiKey": "APIキーを入力",
     "hideApiKey": "APIキーを非表示",

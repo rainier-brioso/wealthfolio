@@ -3593,10 +3593,7 @@ impl ActivityService {
 
         match self.quote_service.update_quote(quote).await {
             Ok(_) => {
-                debug!(
-                    "Created quote for asset {} on {} at price {}",
-                    asset_id, activity_date, unit_price
-                );
+                debug!("Created quote from activity");
             }
             Err(e) => {
                 // Log but don't fail the activity creation
@@ -3636,8 +3633,15 @@ impl ActivityService {
         let Ok(serde_json::Value::Object(mut patch_map)) =
             serde_json::from_str::<serde_json::Value>(patch)
         else {
+            if let Some(snapshot) =
+                existing.and_then(|value| value.get(super::source_reconciliation::METADATA_KEY))
+            {
+                return serde_json::json!({ (super::source_reconciliation::METADATA_KEY): snapshot }).to_string();
+            }
             return patch.to_string();
         };
+        // Import evidence is a snapshot: review and later edits cannot replace it.
+        patch_map.remove(super::source_reconciliation::METADATA_KEY);
         // Only the loan payment actions write a withdrawal's loan tag; an edit
         // carrying a stale or new copy of it never changes the stored one.
         patch_map.remove(LOAN_PAYMENT_TAG_KEY);
@@ -9382,6 +9386,7 @@ mod reviewed_import_metadata_tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -9393,6 +9398,40 @@ mod reviewed_import_metadata_tests {
         let activity = import_with_metadata("ZFL", Some("EQUITY"), Some("CAD"), Some("XTSE"), None);
 
         assert!(ActivityService::reviewed_import_asset_metadata_is_sufficient(&activity));
+    }
+
+    #[test]
+    fn source_reconciliation_does_not_change_duplicate_keys_or_editable_notes() {
+        let mut activity =
+            import_with_metadata("FUND", Some("EQUITY"), Some("EUR"), Some("XFRA"), None);
+        activity.comment = Some("SUSCRIPCION [Inversis: TEST-1]".into());
+        let before = ActivityService::build_import_idempotency_key(&activity, "account");
+        assert!(before.is_some());
+        activity.source_reconciliation = Some(
+            serde_json::from_value(crate::activities::source_reconciliation::tests::fixture())
+                .unwrap(),
+        );
+        assert_eq!(
+            ActivityService::build_import_idempotency_key(&activity, "account"),
+            before
+        );
+        assert_eq!(
+            activity.comment.as_deref(),
+            Some("SUSCRIPCION [Inversis: TEST-1]")
+        );
+    }
+
+    #[test]
+    fn source_reconciliation_survives_non_object_metadata_edits() {
+        let original = crate::activities::source_reconciliation::tests::fixture();
+        let existing = serde_json::json!({ "source_reconciliation": original });
+        for patch in ["null", "[]", "{\"source_reconciliation\":null}"] {
+            let result: serde_json::Value = serde_json::from_str(
+                &ActivityService::merge_metadata_patch(Some(&existing), patch),
+            )
+            .unwrap();
+            assert_eq!(result["source_reconciliation"], original);
+        }
     }
 
     #[test]

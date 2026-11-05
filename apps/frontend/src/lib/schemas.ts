@@ -1,4 +1,5 @@
 import type { TFunction } from "i18next";
+import { sourceReconciliationSchema } from "./source-reconciliation";
 import * as z from "zod";
 import {
   AccountType,
@@ -225,6 +226,7 @@ export const importActivitySchema = z
     lineNumber: z.number().optional(),
     isDraft: z.boolean(),
     comment: z.string().optional(),
+    sourceReconciliation: sourceReconciliationSchema.optional(),
     fxRate: decimalLikeSchema.nullable().optional(),
     subtype: z.string().optional(),
     forceImport: z.boolean().default(false),

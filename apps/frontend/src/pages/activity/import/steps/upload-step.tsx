@@ -14,6 +14,7 @@ import { ImportType } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@wealthfolio/ui/components/ui/card";
+import { Button } from "@wealthfolio/ui/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@wealthfolio/ui/components/ui/tabs";
 import { Checkbox } from "@wealthfolio/ui/components/ui/checkbox";
 import {
@@ -40,6 +41,8 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { CSVFileViewer, type CSVLine } from "../components/csv-file-viewer";
 import { FileDropzone } from "../components/file-dropzone";
+import { InversisImportPanel } from "../components/inversis-import-panel";
+import { SantanderPensionPanel } from "../components/santander-pension-panel";
 import { HelpTooltip } from "../components/help-tooltip";
 import {
   setAccountId,
@@ -565,6 +568,13 @@ export function UploadStep() {
   const { state, dispatch } = useImportContext();
   const { t } = useTranslation();
   const [parseError, setParseError] = useState<string | null>(null);
+  const [sourceMode, setSourceMode] = useState<"csv" | "inversis" | "santander">(
+    state.sourceImport?.sourceId === "santander-pension"
+      ? "santander"
+      : state.sourceImport?.sourceId === "myinvestor-inversis"
+        ? "inversis"
+        : "csv",
+  );
   const { accounts } = useAccounts();
   const { isMobile } = usePlatform();
 
@@ -576,6 +586,13 @@ export function UploadStep() {
   const importProfile = useMemo(() => getActivityImportProfile(selectedAccount), [selectedAccount]);
   const importType =
     selectedAccount?.trackingMode === "HOLDINGS" ? ImportType.HOLDINGS : ImportType.ACTIVITY;
+  const canImportInversis =
+    importType === ImportType.ACTIVITY &&
+    selectedAccount?.accountType === "SECURITIES" &&
+    selectedAccount.trackingMode === "TRANSACTIONS" &&
+    selectedAccount.currency.toUpperCase() === "EUR" &&
+    selectedAccount.isActive &&
+    !selectedAccount.isArchived;
   const baselineParseConfig = useMemo(
     () => createDefaultParseConfig(selectedAccount?.currency),
     [selectedAccount?.currency],
@@ -837,25 +854,34 @@ export function UploadStep() {
   );
 
   const { mutate: parseFile, isPending } = useMutation({
-    mutationFn: (file: File) => parseCsv(file, state.parseConfig),
-    onSuccess: (result) => {
+    mutationFn: ({ file, run }: { file: File; run: number }) =>
+      parseCsv(file, state.parseConfig).then((result) => ({ result, run })),
+    onSuccess: ({ result, run }) => {
+      if (run !== fileParseRun.current || sourceModeRef.current !== "csv") return;
       setParseError(null);
       dispatch(setParsedData(result.headers, result.rows));
       dispatch(setParseConfig(mergeDetectedParseConfig(state.parseConfig, result.detectedConfig)));
     },
-    onError: (error) => {
+    onError: (error, { run }) => {
+      if (run !== fileParseRun.current || sourceModeRef.current !== "csv") return;
       setParseError(
         error instanceof Error ? error.message : t("activity:import.upload.failedToParse"),
       );
     },
   });
 
+  const fileParseRun = useRef(0);
+  const sourceModeRef = useRef(sourceMode);
+  sourceModeRef.current = sourceMode;
+
   const handleFileSelect = useCallback(
     (file: File | null) => {
       if (file) {
+        const run = ++fileParseRun.current;
         dispatch(setFile(file));
-        parseFile(file);
+        parseFile({ file, run });
       } else {
+        ++fileParseRun.current;
         dispatch(setFile(null as unknown as File));
         dispatch(setParsedData([], []));
       }
@@ -866,14 +892,17 @@ export function UploadStep() {
   const handleConfigChange = useCallback(
     (updates: Partial<ParseConfig>) => {
       dispatch(setParseConfig(updates));
-      if (state.file) {
+      if (state.file && sourceModeRef.current === "csv") {
+        const run = ++fileParseRun.current;
         const newConfig = { ...state.parseConfig, ...updates };
         parseCsv(state.file, newConfig)
           .then((result) => {
+            if (run !== fileParseRun.current || sourceModeRef.current !== "csv") return;
             setParseError(null);
             dispatch(setParsedData(result.headers, result.rows));
           })
           .catch((error) => {
+            if (run !== fileParseRun.current || sourceModeRef.current !== "csv") return;
             setParseError(
               error instanceof Error ? error.message : t("activity:import.upload.failedToParse"),
             );
@@ -885,8 +914,49 @@ export function UploadStep() {
 
   const hasParseErrors = parseError !== null;
 
+  const handleSourceModeChange = (mode: "csv" | "inversis" | "santander") => {
+    if (mode === sourceMode) return;
+    ++fileParseRun.current;
+    sourceModeRef.current = mode;
+    setSourceMode(mode);
+    setParseError(null);
+    setPendingLinkedTemplateId(null);
+    dispatch({ type: "CLEAR_SOURCE_IMPORT" });
+  };
+
   return (
     <div className="flex flex-col gap-4">
+      {canImportInversis && (
+        <div aria-label={t("activity:import.inversis.modeLabel")} className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={sourceMode === "csv" ? "default" : "outline"}
+            aria-pressed={sourceMode === "csv"}
+            onClick={() => handleSourceModeChange("csv")}
+          >
+            {t("activity:import.inversis.csvMode")}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={sourceMode === "inversis" ? "default" : "outline"}
+            aria-pressed={sourceMode === "inversis"}
+            onClick={() => handleSourceModeChange("inversis")}
+          >
+            {t("activity:import.inversis.mode")}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={sourceMode === "santander" ? "default" : "outline"}
+            aria-pressed={sourceMode === "santander"}
+            onClick={() => handleSourceModeChange("santander")}
+          >
+            {t("activity:import.santander.title")}
+          </Button>
+        </div>
+      )}
       {/* Primary actions: Account + File upload */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {/* Account */}
@@ -945,52 +1015,91 @@ export function UploadStep() {
         </div>
 
         {/* File upload */}
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-1.5">
-            <span className="text-muted-foreground text-2xs font-mono tabular-nums">02</span>
-            <h2 className="text-sm font-semibold">{t("activity:import.upload.uploadCsv")}</h2>
-            <HelpTooltip content={t("activity:import.upload.uploadCsvHelp")} />
+        {sourceMode === "csv" && (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-1.5">
+              <span className="text-muted-foreground text-2xs font-mono tabular-nums">02</span>
+              <h2 className="text-sm font-semibold">{t("activity:import.upload.uploadCsv")}</h2>
+              <HelpTooltip content={t("activity:import.upload.uploadCsvHelp")} />
+            </div>
+            <div className="h-29">
+              <FileDropzone
+                file={state.file}
+                onFileChange={handleFileSelect}
+                isLoading={isPending}
+                accept=".csv"
+                isValid={!hasParseErrors}
+                error={parseError}
+              />
+            </div>
           </div>
-          <div className="h-29">
-            <FileDropzone
-              file={state.file}
-              onFileChange={handleFileSelect}
-              isLoading={isPending}
-              accept=".csv"
-              isValid={!hasParseErrors}
-              error={parseError}
+        )}
+      </div>
+
+      {sourceMode === "santander" && canImportInversis ? (
+        <SantanderPensionPanel
+          key={state.accountId}
+          accountId={state.accountId}
+          onPrepared={(drafts, quotes) =>
+            dispatch({
+              type: "SET_SOURCE_IMPORT",
+              payload: { sourceId: "santander-pension", drafts, quotes },
+            })
+          }
+          onReset={() => dispatch({ type: "CLEAR_SOURCE_IMPORT" })}
+        />
+      ) : sourceMode === "inversis" && canImportInversis ? (
+        <>
+          <InversisImportPanel
+            accounts={accounts ?? []}
+            fundsAccountId={state.accountId}
+            onPrepared={(drafts) =>
+              dispatch({
+                type: "SET_SOURCE_IMPORT",
+                payload: { sourceId: "myinvestor-inversis", drafts },
+              })
+            }
+            onReset={() => dispatch({ type: "CLEAR_SOURCE_IMPORT" })}
+          />
+          {state.sourceImport?.sourceId === "myinvestor-inversis" && (
+            <p className="text-muted-foreground text-sm" role="status">
+              {t("activity:import.inversis.activitiesCount", {
+                total: state.draftActivities.length,
+              })}
+            </p>
+          )}
+        </>
+      ) : (
+        <>
+          {/* Select Format */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-1.5">
+              <span className="text-muted-foreground text-2xs font-mono tabular-nums">03</span>
+              <h2 className="text-sm font-semibold">{t("activity:import.upload.selectFormat")}</h2>
+              <span className="text-muted-foreground text-2xs rounded border px-1.5 py-px leading-none">
+                {t("activity:import.upload.optional")}
+              </span>
+            </div>
+            <TemplateSelector
+              templates={templates}
+              selectedTemplateId={effectiveSelectedTemplateId}
+              onSelect={handleTemplateSelect}
+              onClear={
+                isDefaultActivityTemplateId(effectiveSelectedTemplateId)
+                  ? undefined
+                  : handleTemplateClear
+              }
+              config={state.parseConfig}
+              onConfigChange={handleConfigChange}
+              hasConfigErrors={hasParseErrors}
             />
           </div>
-        </div>
-      </div>
 
-      {/* Select Format */}
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-1.5">
-          <span className="text-muted-foreground text-2xs font-mono tabular-nums">03</span>
-          <h2 className="text-sm font-semibold">{t("activity:import.upload.selectFormat")}</h2>
-          <span className="text-muted-foreground text-2xs rounded border px-1.5 py-px leading-none">
-            {t("activity:import.upload.optional")}
-          </span>
-        </div>
-        <TemplateSelector
-          templates={templates}
-          selectedTemplateId={effectiveSelectedTemplateId}
-          onSelect={handleTemplateSelect}
-          onClear={
-            isDefaultActivityTemplateId(effectiveSelectedTemplateId)
-              ? undefined
-              : handleTemplateClear
-          }
-          config={state.parseConfig}
-          onConfigChange={handleConfigChange}
-          hasConfigErrors={hasParseErrors}
-        />
-      </div>
-
-      {/* CSV Preview */}
-      {state.file && state.headers.length > 0 && (
-        <CsvPreviewTabs file={state.file} headers={state.headers} rows={state.parsedRows} />
+          {/* CSV Preview */}
+          {state.file && state.headers.length > 0 && (
+            <CsvPreviewTabs file={state.file} headers={state.headers} rows={state.parsedRows} />
+          )}
+        </>
       )}
     </div>
   );

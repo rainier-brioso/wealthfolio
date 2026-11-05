@@ -548,6 +548,7 @@ pub fn run() {
             commands::ai_providers::list_ai_models,
             // AI chat commands
             commands::ai_chat::stream_ai_chat,
+            commands::ai_chat::suggest_import_matches,
             commands::ai_chat::list_ai_threads,
             commands::ai_chat::get_ai_thread,
             commands::ai_chat::get_ai_thread_messages,
@@ -633,6 +634,12 @@ pub fn run() {
             #[cfg(feature = "connect-sync")]
             commands::brokers_sync::save_broker_sync_profile_rules,
             // Device sync commands
+            commands::lan_sync::lan_sync_status,
+            commands::lan_sync::lan_sync_host,
+            commands::lan_sync::lan_sync_join,
+            commands::lan_sync::lan_sync_tick,
+            commands::lan_sync::lan_sync_update_address,
+            commands::lan_sync::lan_sync_disconnect,
             #[cfg(feature = "device-sync")]
             commands::device_sync::get_device,
             #[cfg(feature = "device-sync")]

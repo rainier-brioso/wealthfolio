@@ -6,6 +6,8 @@ import { usePersistentState } from "@/hooks/use-persistent-state";
 import { QueryKeys } from "@/lib/query-keys";
 import type { AiProvidersResponse, MergedProvider, MergedModel } from "@/lib/types";
 
+import { resolveModelSelection } from "./model-selection";
+
 export const CHAT_MODEL_STORAGE_KEY = "chat_selected_model";
 
 export interface StoredModelSelection {
@@ -56,62 +58,19 @@ export function useChatModel(): ChatModelState {
     );
   }, [settings?.providers]);
 
-  // Determine current provider and model
-  const { currentProviderId, currentModelId } = useMemo(() => {
-    // Use the stored selection if it matches an enabled provider and model
-    if (storedSelection) {
-      const provider = enabledProviders.find((p) => p.id === storedSelection.providerId);
-      if (provider) {
-        // Check if model is in catalog models or user's favorite models
-        const isInCatalog = provider.models.some((m) => m.id === storedSelection.modelId);
-        const isInFavorites = provider.favoriteModels?.includes(storedSelection.modelId);
-        if (isInCatalog || isInFavorites) {
-          return { currentProviderId: provider.id, currentModelId: storedSelection.modelId };
-        }
-        // Provider exists but model doesn't - use provider's default model
-        return { currentProviderId: provider.id, currentModelId: provider.defaultModel };
-      }
-    }
-
-    // Fall back to default provider from settings
-    if (settings?.defaultProvider) {
-      const provider = enabledProviders.find((p) => p.id === settings.defaultProvider);
-      if (provider) {
-        const selectedModel = provider.selectedModel ?? provider.defaultModel;
-        const model = provider.models.find((m) => m.id === selectedModel);
-        return {
-          currentProviderId: provider.id,
-          currentModelId: model ? model.id : provider.defaultModel,
-        };
-      }
-    }
-
-    // Fall back to first enabled provider's default model
-    const firstProvider = enabledProviders[0];
-    if (firstProvider) {
-      return {
-        currentProviderId: firstProvider.id,
-        currentModelId: firstProvider.selectedModel ?? firstProvider.defaultModel,
-      };
-    }
-
-    return { currentProviderId: undefined, currentModelId: undefined };
-  }, [enabledProviders, settings?.defaultProvider, storedSelection]);
+  const selection = useMemo(
+    () => resolveModelSelection(settings, storedSelection),
+    [settings, storedSelection],
+  );
+  const currentProviderId = selection?.providerId;
+  const currentModelId = selection?.modelId;
 
   // Get current provider object
   const currentProvider = useMemo(() => {
     return enabledProviders.find((p) => p.id === currentProviderId);
   }, [enabledProviders, currentProviderId]);
 
-  // Ensure resolved model is accessible in the provider's favorites.
-  // ModelPicker filters by favorites — if the resolved model isn't among them,
-  // the picker shows "No model" while the hook sends a different model to the backend.
-  const adjustedModelId = useMemo(() => {
-    if (!currentModelId) return currentModelId;
-    if (!currentProvider?.favoriteModels?.length) return currentModelId;
-    if (currentProvider.favoriteModels.includes(currentModelId)) return currentModelId;
-    return currentProvider.favoriteModels[0];
-  }, [currentProvider, currentModelId]);
+  const adjustedModelId = currentModelId;
 
   // Get current model object
   const currentModel = useMemo(() => {
@@ -148,7 +107,8 @@ export function useChatModel(): ChatModelState {
       // Check if model is in catalog models or user's favorite models
       const isInCatalog = provider.models.some((m) => m.id === modelId);
       const isInFavorites = provider.favoriteModels?.includes(modelId);
-      const selectedModel = isInCatalog || isInFavorites ? modelId : provider.defaultModel;
+      if (!modelId || (!isInCatalog && !isInFavorites)) return;
+      const selectedModel = modelId;
       setStoredSelection({ providerId, modelId: selectedModel });
     },
     [enabledProviders, setStoredSelection],

@@ -387,7 +387,7 @@ export function ReviewStep() {
   }
 
   // Show error if no data
-  if (parsedRows.length === 0) {
+  if (parsedRows.length === 0 && (!state.sourceImport || draftActivities.length === 0)) {
     return (
       <ImportAlert
         variant="destructive"
@@ -398,7 +398,7 @@ export function ReviewStep() {
   }
 
   // Show error if no mapping
-  if (!mapping || Object.keys(mapping.fieldMappings).length === 0) {
+  if (!state.sourceImport && (!mapping || Object.keys(mapping.fieldMappings).length === 0)) {
     return (
       <ImportAlert
         variant="warning"

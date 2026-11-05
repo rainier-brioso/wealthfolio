@@ -350,6 +350,22 @@ describe("import asset rules", () => {
     expect(draft?.providerSymbol).toBe("XAU-1KG");
   });
 
+  it("retains the source ISIN independently of the provider quote identity", () => {
+    const asset = buildNewAssetFromDraft(
+      createDraft({
+        symbol: "0P0001XF40",
+        isin: "ie000zyrh0q7",
+        quoteCcy: "EUR",
+        instrumentType: "EQUITY",
+        providerId: "YAHOO",
+        providerSymbol: "0P0001XF40.F",
+      }),
+    );
+    expect(asset?.metadata).toEqual({ identifiers: { isin: "IE000ZYRH0Q7" } });
+    expect(asset?.instrumentSymbol).toBe("0P0001XF40");
+    expect(asset?.providerSymbol).toBe("0P0001XF40.F");
+  });
+
   it("keeps provider refs when building an import asset candidate", () => {
     const candidate = buildImportAssetCandidateFromDraft(
       createDraft({

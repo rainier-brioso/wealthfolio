@@ -1407,6 +1407,7 @@ export interface NewAsset {
   providerSymbol?: string;
   providerConfig?: Record<string, unknown> | null;
   notes?: string;
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface ImportAssetCandidate {

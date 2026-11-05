@@ -767,6 +767,7 @@ async fn build_context(
 
     Ok(BuiltContext {
         context: ServiceContext {
+            lan_sync: Default::default(),
             portfolio_tasks: crate::listeners::PortfolioTasks::new(),
             #[cfg(feature = "device-sync")]
             sync_approvals: Default::default(),

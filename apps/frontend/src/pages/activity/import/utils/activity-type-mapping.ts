@@ -24,7 +24,7 @@ function isLegacyActivityLabelMatch(
 
 /**
  * Find the best activity type match for a CSV value.
- * Only explicit user/template mappings count as resolved.
+ * Explicit user/template mappings take precedence over inferred interest periods.
  * A narrow legacy fallback keeps old 12-character truncated mappings working
  * without reintroducing broad prefix collisions like TRANSFER_OUT vs TRANSFER_OUT_FEE.
  */
@@ -52,5 +52,13 @@ export function findMappedActivityType(
     }
   }
 
-  return legacyMatch;
+  if (legacyMatch) return legacyMatch;
+
+  // MyInvestor account interest descriptions contain a changing settlement period.
+  // Match the entire description so fees or withholding mentioning a period stay unresolved.
+  if (/^PERIODO_\d{2}\/\d{2}\/\d{4}_\d{2}\/\d{2}\/\d{4}$/.test(normalized)) {
+    return ActivityType.INTEREST;
+  }
+
+  return null;
 }

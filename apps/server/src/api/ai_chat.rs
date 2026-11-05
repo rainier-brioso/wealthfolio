@@ -22,6 +22,18 @@ use wealthfolio_ai::{
     ThreadPage,
 };
 
+async fn suggest_import_matches(
+    axum::Extension(state): axum::Extension<Arc<AppState>>,
+    Json(request): Json<wealthfolio_ai::import_matching::ImportMatchRequest>,
+) -> Result<Json<wealthfolio_ai::import_matching::ImportMatchResponse>, AiChatError> {
+    state
+        .ai_chat_service
+        .suggest_import_matches(request)
+        .await
+        .map(Json)
+        .map_err(AiChatError::Ai)
+}
+
 // ============================================================================
 // Request/Response Types
 // ============================================================================
@@ -338,6 +350,7 @@ pub fn router<S: Clone + Send + Sync + 'static>() -> Router<S> {
     Router::new()
         // Streaming endpoint
         .route("/ai/chat/stream", post(stream_chat))
+        .route("/ai/import-matches", post(suggest_import_matches))
         // Thread management
         .route("/ai/threads", get(list_threads))
         .route(

@@ -303,5 +303,29 @@
       "replace": "Reemplazar los datos de este dispositivo",
       "backup": "Hacer una copia de seguridad de este perfil"
     }
+  },
+  "lan": {
+    "title": "Sincronización Wi-Fi",
+    "description": "Sincroniza este ordenador y un móvil en tu red local.",
+    "nativeOnly": "Usa la aplicación nativa de escritorio o móvil.",
+    "status": "Estado de la conexión",
+    "join": "Conectar al ordenador",
+    "host": "Compartir desde el ordenador",
+    "instructions": "Mantén el ordenador abierto y desbloqueado. Los cambios se sincronizan en ambos sentidos mientras la app móvil está visible.",
+    "paired": "Dispositivo emparejado",
+    "waiting": "Esperando a tu móvil",
+    "pending": "Importación inicial pendiente. Reintenta cuando el ordenador esté disponible.",
+    "stopped": "La conexión del ordenador está detenida. Iníciala abajo.",
+    "lastSync": "Última sincronización:",
+    "address": "Dirección y puerto del ordenador",
+    "start": "Iniciar / mostrar invitación",
+    "privateCode": "Este código da acceso a tu patrimonio. Compártelo solo con tu propio dispositivo.",
+    "invitation": "Invitación privada",
+    "emptyProfile": "Conecta desde un perfil vacío. La primera importación copia el patrimonio del ordenador. Los datos existentes del móvil están protegidos.",
+    "scan": "Escanear QR",
+    "saveAddress": "Guardar dirección",
+    "syncNow": "Sincronizar ahora",
+    "disconnect": "Desconectar",
+    "working": "Conectando y sincronizando…"
   }
 }

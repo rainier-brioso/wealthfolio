@@ -462,7 +462,11 @@ export function AssetReviewStep() {
 
       const fallbackCurrency =
         candidateMap.get(item.key)?.draft.currency || state.parseConfig.defaultCurrency;
-      const assetDraft = buildNewAssetFromSearchResult(result, fallbackCurrency);
+      const assetDraft = buildNewAssetFromSearchResult(
+        result,
+        fallbackCurrency,
+        candidateMap.get(item.key)?.draft.isin,
+      );
 
       let nextDrafts = draftActivities;
       if (result.isExisting && result.existingAssetId) {
@@ -532,6 +536,7 @@ export function AssetReviewStep() {
           quoteMode: "MANUAL",
         },
         fallbackCurrency,
+        candidate?.draft.isin,
       );
       const nextDrafts = applyAssetResolution(draftActivities, item.key, assetDraft, {
         importAssetKey: item.key,
@@ -574,6 +579,7 @@ export function AssetReviewStep() {
           quoteMode: "MANUAL",
         },
         fallbackCurrency,
+        candidate?.draft.isin,
       );
       nextDrafts = applyAssetResolution(nextDrafts, item.key, assetDraft, {
         importAssetKey: item.key,

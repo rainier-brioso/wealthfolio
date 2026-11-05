@@ -1,3 +1,4 @@
+import { importFieldMapped, fixedActivityType } from "./utils/mapping-values";
 import { getAccounts, logger } from "@/adapters";
 import { usePlatform } from "@/hooks/use-platform";
 import { shouldResolveImportAsset } from "@/lib/activity-utils";
@@ -114,6 +115,7 @@ function useStepValidation(
 
     switch (step) {
       case "upload":
+        if (state.sourceImport) return draftActivities.length > 0;
         // Can proceed if file is uploaded and parsed successfully
         return file !== null && headers.length > 0 && parsedRows.length > 0;
 
@@ -160,7 +162,7 @@ function useStepValidation(
         }
 
         const requiredFieldsMapped = importProfile.requiredMappingFields.every((field) =>
-          isFieldMapped(mapping.fieldMappings[field], headers),
+          importFieldMapped(field, mapping.fieldMappings, headers),
         );
         if (!requiredFieldsMapped) return false;
 
@@ -232,7 +234,7 @@ function useStepValidation(
               if (!symbol) return;
 
               // Resolve activity type using explicit mappings only
-              let csvActivityType: string | undefined;
+              let csvActivityType: string | undefined = fixedActivityType(atMapping);
               for (const idx of atCols) {
                 const val = row[idx]?.trim();
                 if (val) {
@@ -433,13 +435,17 @@ function ImportWizardContent() {
   ]);
 
   // Select the appropriate steps and components based on mode
-  const steps = isHoldingsMode
+  const baseSteps = isHoldingsMode
     ? holdingsHasAssets
       ? HOLDINGS_STEPS
       : HOLDINGS_STEPS_CASH_ONLY
     : isTransactionImport
       ? TRANSACTION_STEPS
       : STEPS;
+  const steps = useMemo(
+    () => (state.sourceImport ? baseSteps.filter((step) => step.id !== "mapping") : baseSteps),
+    [baseSteps, state.sourceImport],
+  );
   const stepComponents = isHoldingsMode ? HOLDINGS_STEP_COMPONENTS : STEP_COMPONENTS;
 
   useEffect(() => {
@@ -466,6 +472,12 @@ function ImportWizardContent() {
   const handleNext = useCallback(() => {
     void (async () => {
       if (!canGoNext) return;
+
+      if (state.step === "upload" && state.sourceImport && !isHoldingsMode) {
+        dispatch(nextStep());
+        void previewAssets(state.draftActivities, { revision: state.draftRevision });
+        return;
+      }
 
       if (state.step === "upload" && state.headers.length > 0 && !isHoldingsMode) {
         const mergedFieldMappings = computeFieldMappings(
@@ -597,6 +609,7 @@ function ImportWizardContent() {
     dispatch,
     canGoNext,
     state.step,
+    state.sourceImport,
     state.headers,
     state.mapping,
     state.accountId,

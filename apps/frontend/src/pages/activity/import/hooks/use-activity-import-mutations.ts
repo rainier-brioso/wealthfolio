@@ -11,7 +11,10 @@ export function useActivityImportMutations({
   onSuccess,
   onError,
 }: {
-  onSuccess?: (activities: ActivityImport[], result: ImportActivitiesResult) => void;
+  onSuccess?: (
+    activities: ActivityImport[],
+    result: ImportActivitiesResult,
+  ) => void | Promise<void>;
   onError?: (error: string) => void;
 } = {}) {
   const queryClient = useQueryClient();
@@ -31,7 +34,7 @@ export function useActivityImportMutations({
       // Call the provided onSuccess callback if it exists
       // Note: We don't show a toast here since the result step displays the success state
       if (onSuccess) {
-        onSuccess(result.activities, result);
+        await onSuccess(result.activities, result);
       }
     },
     onError: (error: unknown) => {

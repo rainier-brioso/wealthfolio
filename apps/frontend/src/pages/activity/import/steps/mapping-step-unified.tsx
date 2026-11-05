@@ -1,3 +1,9 @@
+import {
+  CALCULATED_UNIT_PRICE,
+  fixedActivityType,
+  importFieldMapped,
+  readMappedValue,
+} from "../utils/mapping-values";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getAccounts,
@@ -147,13 +153,13 @@ export function MappingStepUnified() {
     [importProfile, t],
   );
 
-  const effectiveActivityMappings = useMemo(
-    () =>
-      isTransactionImportProfile(importProfile)
-        ? mergeActivityMappingsForImportProfile(localMapping.activityMappings, importProfile)
-        : localMapping.activityMappings,
-    [importProfile, localMapping.activityMappings],
-  );
+  const effectiveActivityMappings = useMemo(() => {
+    const fixed = fixedActivityType(localMapping.fieldMappings[ImportFormat.ACTIVITY_TYPE]);
+    if (fixed) return { [fixed]: [fixed] };
+    return isTransactionImportProfile(importProfile)
+      ? mergeActivityMappingsForImportProfile(localMapping.activityMappings, importProfile)
+      : localMapping.activityMappings;
+  }, [importProfile, localMapping.activityMappings, localMapping.fieldMappings]);
 
   const displayMapping = useMemo(
     () =>
@@ -189,18 +195,9 @@ export function MappingStepUnified() {
   // Helper to get mapped value from row (supports fallback columns)
   const getMappedValue = useCallback(
     (row: CsvRowData, field: ImportFormat): string => {
-      const mapping = localMapping.fieldMappings[field];
-      if (!mapping) return "";
-      if (Array.isArray(mapping)) {
-        for (const h of mapping) {
-          const val = row[h]?.trim();
-          if (val) return val;
-        }
-        return "";
-      }
-      return row[mapping] || "";
+      return readMappedValue(row, field, localMapping.fieldMappings, state.parseConfig);
     },
-    [localMapping.fieldMappings],
+    [localMapping.fieldMappings, state.parseConfig],
   );
 
   // Picking the account column resolves its values against existing accounts, so an
@@ -232,7 +229,7 @@ export function MappingStepUnified() {
 
   // Check if all required fields are mapped
   const requiredFieldsMapped = importProfile.requiredMappingFields.every((field) =>
-    isFieldMapped(localMapping.fieldMappings[field], headers),
+    importFieldMapped(field, localMapping.fieldMappings, headers),
   );
 
   // Count how many fields are mapped
@@ -972,6 +969,11 @@ export function MappingStepUnified() {
       </div>
 
       {/* Summary Cards */}
+      {localMapping.fieldMappings[ImportFormat.UNIT_PRICE] === CALCULATED_UNIT_PRICE && (
+        <p role="note" className="text-muted-foreground mb-3 text-sm">
+          {t("activity:import.mapping.calculatedUnitPriceHelp")}
+        </p>
+      )}
       <div className="mb-4 grid shrink-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <ImportAlert
           variant={requiredFieldsMapped ? "success" : "destructive"}

@@ -1,3 +1,4 @@
+import { CALCULATED_UNIT_PRICE, isCalculatedMapping } from "../utils/mapping-values";
 import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { ImportFormat, ImportMappingData, type SymbolSearchResult } from "@/lib/types";
@@ -22,6 +23,8 @@ import {
  */
 const COLUMN_ALIASES: Record<string, string[]> = {
   [ImportFormat.DATE]: [
+    "Fecha de la orden",
+    "Fecha de operación",
     "date",
     "trade date",
     "tradedate",
@@ -41,6 +44,8 @@ const COLUMN_ALIASES: Record<string, string[]> = {
     "transaction_date",
   ],
   [ImportFormat.ACTIVITY_TYPE]: [
+    "Tipo de operación",
+    "Concepto",
     "activitytype",
     "activity type",
     "activity_type",
@@ -92,6 +97,8 @@ const COLUMN_ALIASES: Record<string, string[]> = {
     "type_hint",
   ],
   [ImportFormat.QUANTITY]: [
+    "Nº de participaciones",
+    "Participaciones",
     "quantity",
     "qty",
     "shares",
@@ -129,6 +136,8 @@ const COLUMN_ALIASES: Record<string, string[]> = {
     "costbasis",
   ],
   [ImportFormat.AMOUNT]: [
+    "Importe",
+    "Importe estimado",
     "amount",
     "transaction amount",
     "transactionamount",
@@ -154,6 +163,7 @@ const COLUMN_ALIASES: Record<string, string[]> = {
     "splitratio",
   ],
   [ImportFormat.CURRENCY]: [
+    "Divisa",
     "currency",
     "currencycode",
     "currency code",
@@ -216,6 +226,7 @@ const COLUMN_ALIASES: Record<string, string[]> = {
     "acct",
   ],
   [ImportFormat.COMMENT]: [
+    "Concepto",
     "comment",
     "comments",
     "note",
@@ -464,12 +475,31 @@ export function computeFieldMappings(
         if (header.some((h) => headerSet.has(h))) {
           result[field] = header;
         }
-      } else if (headerSet.has(header)) {
+      } else if (headerSet.has(header) || isCalculatedMapping(header)) {
         result[field] = header;
       }
     }
   }
 
+  const typeHeader = result[ImportFormat.ACTIVITY_TYPE];
+  if (
+    typeof typeHeader === "string" &&
+    !result[ImportFormat.COMMENT] &&
+    COLUMN_ALIASES[ImportFormat.COMMENT].some(
+      (alias) => normalizeHeader(alias) === normalizeHeader(typeHeader),
+    )
+  ) {
+    result[ImportFormat.COMMENT] = typeHeader;
+  }
+
+  if (
+    !result[ImportFormat.UNIT_PRICE] &&
+    result[ImportFormat.AMOUNT] &&
+    result[ImportFormat.QUANTITY] &&
+    profile.assetResolutionEnabled
+  ) {
+    result[ImportFormat.UNIT_PRICE] = CALCULATED_UNIT_PRICE;
+  }
   return sanitizeFieldMappingsForImportProfile(result, profile);
 }
 

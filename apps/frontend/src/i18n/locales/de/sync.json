@@ -298,5 +298,29 @@
       "replace": "Die Daten auf diesem Gerät ersetzen",
       "backup": "Dieses Profil sichern"
     }
+  },
+  "lan": {
+    "title": "WLAN-Synchronisierung",
+    "description": "Synchronisiere diesen Computer und ein Mobilgerät im lokalen Netzwerk.",
+    "nativeOnly": "Verwende die native Desktop- oder Mobil-App.",
+    "status": "Verbindungsstatus",
+    "join": "Mit Computer verbinden",
+    "host": "Vom Computer teilen",
+    "instructions": "Lass den Computer geöffnet und entsperrt. Änderungen werden in beide Richtungen synchronisiert, solange die Mobil-App sichtbar ist.",
+    "paired": "Gerät gekoppelt",
+    "waiting": "Warten auf dein Mobilgerät",
+    "pending": "Erster Import ausstehend. Versuche es erneut, wenn der Computer erreichbar ist.",
+    "stopped": "Der lokale Server ist gestoppt. Starte ihn unten erneut.",
+    "lastSync": "Letzte Synchronisierung:",
+    "address": "Adresse und Port des Computers",
+    "start": "Starten / Einladung anzeigen",
+    "privateCode": "Dieser Code gewährt Zugriff auf dein Vermögen. Teile ihn nur mit deinem eigenen Gerät.",
+    "invitation": "Private Einladung",
+    "emptyProfile": "Verbinde ein leeres Profil. Der erste Import kopiert das Portfolio des Computers. Vorhandene mobile Daten sind geschützt.",
+    "scan": "QR scannen",
+    "saveAddress": "Adresse speichern",
+    "syncNow": "Jetzt synchronisieren",
+    "disconnect": "Trennen",
+    "working": "Verbindung und Synchronisierung…"
   }
 }

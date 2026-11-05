@@ -63,7 +63,7 @@ pub(super) fn gemini_thinking_params(model_id: &str, thinking: bool) -> Option<V
 }
 
 /// Additional parameters for the OpenAI Responses API.
-pub(super) fn openai_responses_params(model_id: &str, thinking: bool) -> Value {
+pub(crate) fn openai_responses_params(model_id: &str, thinking: bool) -> Value {
     // Keep conversations off OpenAI's servers. Stateless reasoning models
     // return their reasoning encrypted so it can be sent back with the tool
     // results; non-reasoning models reject the encrypted-content include.
@@ -86,7 +86,7 @@ fn is_pro_model(model_id: &str) -> bool {
 }
 
 /// Temperature to send, or `None` to use the model's default.
-pub(super) fn effective_temperature(
+pub(crate) fn effective_temperature(
     provider_id: &str,
     model_id: &str,
     thinking: bool,

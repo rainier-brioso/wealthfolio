@@ -231,6 +231,25 @@ describe("adapter command parity", () => {
     expect(await invoke("rerun_categorization_rules", { onlyUncategorized: true })).toBe(1);
   });
 
+  it("routes stateless import matching with the selected model and context", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ proposals: [], rejectedCount: 0, abstainedCount: 0 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const request = {
+      providerId: "custom",
+      modelId: "selected-model",
+      context: { operations: [], movements: [], reserved: [], candidates: [] },
+    };
+    await invoke("suggest_import_matches", { request });
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/v1/ai/import-matches");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toEqual(request);
+  });
   it("registers every command reachable from the web adapter", () => {
     const files = [
       ...collectSourceFiles(path.join(frontendSrcDir, "adapters/shared")),

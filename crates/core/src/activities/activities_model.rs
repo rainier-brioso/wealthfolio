@@ -1193,6 +1193,12 @@ pub struct ActivitySearchResponse {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ActivityImport {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "super::source_reconciliation::deserialize_optional"
+    )]
+    pub source_reconciliation: Option<super::source_reconciliation::SourceReconciliation>,
     pub id: Option<String>,
     pub date: String,
     pub symbol: String,
@@ -2207,6 +2213,17 @@ impl From<ActivityImport> for NewActivity {
                 Some(serde_json::json!({ "flow": { "is_external": true } }).to_string())
             }
             _ => None,
+        };
+
+        let metadata = if let Some(snapshot) = import.source_reconciliation {
+            let mut value = metadata
+                .as_deref()
+                .and_then(|text| serde_json::from_str::<serde_json::Value>(text).ok())
+                .unwrap_or_else(|| serde_json::json!({}));
+            value[super::source_reconciliation::METADATA_KEY] = serde_json::json!(snapshot);
+            Some(value.to_string())
+        } else {
+            metadata
         };
 
         NewActivity {

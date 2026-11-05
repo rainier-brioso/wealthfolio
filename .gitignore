@@ -17,6 +17,7 @@ node_modules
 dist
 dist-ssr
 apps/frontend/public/__generated__/
+apps/frontend/public/pdf-ocr/
 *.local
 build
 out

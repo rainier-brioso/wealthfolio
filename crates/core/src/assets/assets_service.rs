@@ -1945,7 +1945,12 @@ impl AssetServiceTrait for AssetService {
                     provider_id: provider_id.clone(),
                     provider_symbol: provider_symbol.clone(),
                     notes: None,
-                    metadata: None,
+                    // Keep the source identity independently of the provider's quote symbol.
+                    metadata: input.isin.as_deref().and_then(|isin| {
+                        crate::utils::isin::parse_isin(isin)
+                            .ok()
+                            .map(|_| serde_json::json!({ "identifiers": { "isin": isin.trim().to_uppercase() } }))
+                    }),
                 })
             } else {
                 None
@@ -5376,7 +5381,9 @@ mod tests {
         assert_eq!(output.exchange_mic.as_deref(), Some("XNAS"));
         assert_eq!(output.quote_ccy.as_deref(), Some("USD"));
         assert_eq!(output.provider_symbol.as_deref(), Some("AAPL"));
-        assert!(output.draft.is_some());
+        let draft = output.draft.expect("resolved asset draft");
+        assert_eq!(draft.instrument_symbol.as_deref(), Some("AAPL"));
+        assert_eq!(draft.metadata.unwrap()["identifiers"]["isin"], isin);
     }
 
     #[tokio::test]

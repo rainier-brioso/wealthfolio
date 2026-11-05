@@ -1,4 +1,5 @@
 // Web adapter - Browser implementation
+export * from "./lan-sync";
 // This file re-exports shared modules and platform-specific modules
 
 import type { RunEnv } from "../types";
@@ -357,6 +358,7 @@ export {
 // AI Providers Commands
 export {
   getAiProviders,
+  suggestImportMatches,
   listAiModels,
   setDefaultAiProvider,
   updateAiProviderSettings,

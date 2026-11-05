@@ -294,5 +294,29 @@
       "replace": "替换此设备上的数据",
       "backup": "备份此配置文件"
     }
+  },
+  "lan": {
+    "title": "Wi-Fi 同步",
+    "description": "在本地网络中同步此电脑和一台移动设备。",
+    "nativeOnly": "请使用原生桌面或移动应用。",
+    "status": "连接状态",
+    "join": "连接电脑",
+    "host": "从电脑共享",
+    "instructions": "请保持电脑应用打开且已解锁。移动应用可见时，更改会双向同步。",
+    "paired": "设备已配对",
+    "waiting": "等待移动设备",
+    "pending": "等待首次导入。电脑可用后请重试。",
+    "stopped": "电脑本地服务已停止。请在下方重新启动。",
+    "lastSync": "上次同步：",
+    "address": "电脑地址和端口",
+    "start": "启动 / 显示邀请",
+    "privateCode": "此代码可访问你的资产数据。仅与你自己的设备分享。",
+    "invitation": "私密邀请",
+    "emptyProfile": "请使用空白配置连接。首次导入会复制电脑上的投资组合。移动设备现有数据受到保护。",
+    "scan": "扫描二维码",
+    "saveAddress": "保存地址",
+    "syncNow": "立即同步",
+    "disconnect": "断开连接",
+    "working": "正在连接并同步…"
   }
 }

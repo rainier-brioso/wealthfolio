@@ -540,6 +540,7 @@
     "default": "기본값",
     "apiKeyRequired": "API 키 필요",
     "apiKey": "API 키",
+    "apiKeyOptional": "API 키(선택 사항)",
     "getApiKey": "API 키 받기",
     "enterApiKey": "API 키 입력",
     "hideApiKey": "API 키 숨기기",

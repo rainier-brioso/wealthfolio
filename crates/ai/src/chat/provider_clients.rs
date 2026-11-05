@@ -12,14 +12,15 @@ use rig::providers::{
     gemini::{Gemini, GeminiConfig},
     ollama::{wire::OllamaConfig, Ollama},
     openai::{
-        wire::{GROQ, OPENROUTER},
+        wire::{Auth, GROQ, OPENROUTER},
         OpenAI, OpenAIConfig,
     },
 };
 use std::time::Duration;
 
 use crate::error::AiError;
-use crate::provider_urls::ensure_openai_v1_base_url;
+use crate::provider_model::CUSTOM_PROVIDER_ID;
+use crate::provider_urls::{custom_provider_base_url, ensure_openai_v1_base_url};
 
 /// Every provider sends through the app's shared HTTP client (proxy and TLS
 /// settings included).
@@ -87,6 +88,13 @@ pub(crate) fn create_openai_client(
     provider_id: &str,
     provider_url: Option<String>,
 ) -> Result<OpenAI, AiError> {
+    if provider_id == CUSTOM_PROVIDER_ID {
+        let url = custom_provider_base_url(provider_url.as_deref())?;
+        return openai_shaped_client(
+            OpenAIConfig::new(api_key.unwrap_or_default()).with_auth(Auth::OptionalBearer),
+            Some(url),
+        );
+    }
     let key = require_key(api_key, provider_id)?;
     openai_shaped_client(OpenAIConfig::new(key), provider_url)
 }
@@ -1552,6 +1560,102 @@ pub(crate) mod transport_tests {
         assert!(body.get("temperature").is_none());
         assert!(body.get("store").is_none());
         assert!(!body["tools"].as_array().unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn custom_chat_uses_only_the_configured_endpoint_with_optional_auth() {
+        use crate::chat::{ChatConfig, ChatService};
+        use crate::env::test_env::{MockEnvironment, MockSettingsService};
+        use crate::provider_model::AI_PROVIDER_SETTINGS_KEY;
+        use crate::types::{AiStreamEvent, ChatModelConfig, SendMessageRequest};
+        for key in [None, Some("custom-fixture-key")] {
+            let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let url = format!("http://{}/v1", listener.local_addr().unwrap());
+            let server = tokio::spawn(serve_chat(listener, provider_fixture("openai", false)));
+            let mut env = MockEnvironment::new();
+            if let Some(key) = key {
+                env = env.with_secret("ai_custom", key);
+            }
+            env.settings_service=Arc::new(MockSettingsService { settings: std::sync::RwLock::new(std::collections::HashMap::from([(
+                AI_PROVIDER_SETTINGS_KEY.to_string(),serde_json::json!({"schemaVersion":2,"providers":{"custom":{"enabled":true,"customUrl":url,"toolsAllowlist":[],"modelCapabilityOverrides":{"served-model":{"tools":true}}}}}).to_string()
+            )])) });
+            let service = ChatService::new(Arc::new(env), ChatConfig::default());
+            let mut stream = service
+                .send_message(SendMessageRequest {
+                    content: "Hello".into(),
+                    config: Some(ChatModelConfig {
+                        provider: Some(CUSTOM_PROVIDER_ID.into()),
+                        model: Some("served-model".into()),
+                        thinking: Some(false),
+                    }),
+                    ..Default::default()
+                })
+                .await
+                .unwrap();
+            tokio::time::timeout(Duration::from_secs(10), async {
+                while let Some(event) = stream.next().await {
+                    if let AiStreamEvent::Error { message, .. } = event {
+                        panic!("custom chat failed: {message}");
+                    }
+                }
+            })
+            .await
+            .unwrap();
+            let chats = server.await.unwrap();
+            assert_eq!(chats.len(), 1);
+            let (headers, body) = &chats[0];
+            assert!(headers.starts_with("POST /v1/chat/completions "));
+            assert_eq!(body["model"], "served-model");
+            assert!(body.get("store").is_none());
+            let authorization = headers.to_ascii_lowercase().contains("authorization:");
+            assert_eq!(authorization, key.is_some());
+        }
+    }
+
+    #[tokio::test]
+    async fn custom_chat_rejects_disabled_missing_endpoint_or_missing_model_before_persistence() {
+        use crate::chat::{ChatConfig, ChatService};
+        use crate::env::test_env::{MockEnvironment, MockSettingsService};
+        use crate::provider_model::AI_PROVIDER_SETTINGS_KEY;
+        use crate::types::{ChatModelConfig, SendMessageRequest};
+        for (settings, model) in [
+            (
+                serde_json::json!({"enabled":false,"customUrl":"http://127.0.0.1:1"}),
+                "served-model",
+            ),
+            (serde_json::json!({"enabled":true}), "served-model"),
+            (
+                serde_json::json!({"enabled":true,"customUrl":"http://127.0.0.1:1"}),
+                "",
+            ),
+        ] {
+            let mut env = MockEnvironment::new();
+            env.settings_service = Arc::new(MockSettingsService {
+                settings: std::sync::RwLock::new(std::collections::HashMap::from([(
+                    AI_PROVIDER_SETTINGS_KEY.to_string(),
+                    serde_json::json!({"schemaVersion":2,"providers":{"custom":settings}})
+                        .to_string(),
+                )])),
+            });
+            let service = ChatService::new(Arc::new(env), ChatConfig::default());
+            assert!(service
+                .send_message(SendMessageRequest {
+                    content: "Hello".into(),
+                    config: Some(ChatModelConfig {
+                        provider: Some(CUSTOM_PROVIDER_ID.into()),
+                        model: Some(model.into()),
+                        thinking: None
+                    }),
+                    ..Default::default()
+                })
+                .await
+                .is_err());
+            assert!(service
+                .list_threads_paginated(&Default::default())
+                .unwrap()
+                .threads
+                .is_empty());
+        }
     }
 
     #[tokio::test]
