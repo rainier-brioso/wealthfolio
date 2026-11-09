@@ -266,6 +266,7 @@ impl ActivityService {
     #[allow(clippy::too_many_arguments)]
     fn activity_cash_inputs<'a>(
         activity_type: &'a str,
+        subtype: Option<&'a str>,
         currency: &'a str,
         quantity: Option<Decimal>,
         unit_price: Option<Decimal>,
@@ -276,6 +277,7 @@ impl ActivityService {
     ) -> ActivityCashInputs<'a> {
         ActivityCashInputs {
             activity_type,
+            subtype,
             currency,
             is_security_transfer: false,
             quantity,
@@ -378,6 +380,7 @@ impl ActivityService {
         // Derivation only - the currency-scaled tolerance is never consulted.
         let inputs = Self::activity_cash_inputs(
             activity_type,
+            subtype,
             "",
             quantity,
             unit_price,
@@ -486,6 +489,7 @@ impl ActivityService {
             if Self::is_trade_type(&activity.activity_type) {
                 let inputs = Self::activity_cash_inputs(
                     &activity.activity_type,
+                    activity.subtype.as_deref(),
                     &activity.currency,
                     activity.quantity,
                     activity.unit_price,
@@ -870,6 +874,7 @@ impl ActivityService {
             if let Some(current_amount) = explicit_amount.or(amount) {
                 let inputs = Self::activity_cash_inputs(
                     &activity.activity_type,
+                    activity.subtype.as_deref(),
                     &cash_currency,
                     quantity,
                     unit_price,
@@ -1099,7 +1104,8 @@ impl ActivityService {
         quantity: Option<Decimal>,
         unit_price: Option<Decimal>,
     ) -> ImportSymbolDisposition {
-        if NewActivity::is_asset_backed_income_subtype(activity_type, subtype)
+        if NewActivity::is_fee_in_kind(activity_type, subtype)
+            || NewActivity::is_asset_backed_income_subtype(activity_type, subtype)
             || (activity_type.eq_ignore_ascii_case(ACTIVITY_TYPE_ADJUSTMENT)
                 && Self::requires_asset_identity(activity_type, subtype))
         {
@@ -1137,6 +1143,9 @@ impl ActivityService {
     }
 
     fn requires_asset_identity(activity_type: &str, subtype: Option<&str>) -> bool {
+        if NewActivity::is_fee_in_kind(activity_type, subtype) {
+            return true;
+        }
         if activity_type.eq_ignore_ascii_case(ACTIVITY_TYPE_ADJUSTMENT) {
             let subtype = NewActivity::canonicalize_subtype_for_activity(activity_type, subtype);
             return subtype.as_deref().is_some_and(|subtype| {
@@ -9039,6 +9048,7 @@ impl ActivityService {
             currency: String,
             symbol: String,
             amount: Decimal,
+            quantity_only: bool,
         }
 
         #[derive(Debug, Clone)]
@@ -9063,8 +9073,7 @@ impl ActivityService {
             }
             activity.amount.or_else(|| {
                 let quantity = activity.quantity?;
-                let unit_price = activity.unit_price?;
-                Some(quantity * unit_price)
+                Some(quantity * activity.unit_price.unwrap_or(Decimal::ONE))
             })
         }
 
@@ -9079,6 +9088,7 @@ impl ActivityService {
                 currency: activity.currency.clone(),
                 symbol: activity.symbol.clone(),
                 amount,
+                quantity_only: activity.amount.is_none() && activity.unit_price.is_none(),
             })
         }
 

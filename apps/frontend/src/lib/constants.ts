@@ -412,6 +412,8 @@ export const ACTIVITY_SUBTYPES = {
 
   // INTEREST subtypes - STAKING_REWARD expands to INTEREST + BUY
   STAKING_REWARD: "STAKING_REWARD",
+  // Fee charged in asset units, with its value recorded without a cash movement.
+  FEE_IN_KIND: "FEE_IN_KIND",
 
   // CREDIT subtypes
   // BONUS: external flow (new capital, affects TWR/net_contribution)
@@ -500,6 +502,7 @@ export const SUBTYPE_DISPLAY_NAMES: Record<string, string> = {
   [ACTIVITY_SUBTYPES.DRIP]: "Dividend Reinvested (DRIP)",
   [ACTIVITY_SUBTYPES.DIVIDEND_IN_KIND]: "Dividend in Kind",
   [ACTIVITY_SUBTYPES.STAKING_REWARD]: "Staking Reward",
+  [ACTIVITY_SUBTYPES.FEE_IN_KIND]: "Fee paid in asset",
   [ACTIVITY_SUBTYPES.BONUS]: "Bonus",
   [ACTIVITY_SUBTYPES.REBATE]: "Trading Rebate",
   [ACTIVITY_SUBTYPES.REFUND]: "Fee Refund",

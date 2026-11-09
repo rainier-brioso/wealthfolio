@@ -110,8 +110,11 @@ export function SantanderPensionPanel({
             {t("activity:import.santander.error")} <code>{error}</code>
           </p>
         )}
-        {statements.map((statement) => (
-          <section key={statement.closingDate} className="space-y-3 rounded-lg border p-4">
+        {statements.map((statement, index) => (
+          <section
+            key={`${statement.symbol}-${statement.closingDate}-${index}`}
+            className="space-y-3 rounded-lg border p-4"
+          >
             <h3 className="text-sm font-medium">
               {statement.name} · {dates.formatDate(statement.closingDate)}
             </h3>

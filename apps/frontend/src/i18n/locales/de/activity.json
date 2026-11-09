@@ -1514,12 +1514,24 @@
     },
     "santander": {
       "title": "Santander Altersvorsorge (PDF)",
-      "description": "Vollständigen Verlauf ab Anfangssaldo null nur in diesen Plan importieren. PDF und OCR werden lokal gelesen. Kein Bankkonto wird belastet.",
+      "description": "Einen oder mehrere Quartalsauszüge importieren. Nur die aufgeführten Vorgänge werden importiert; Anfangsbestände werden nicht hinzugefügt. PDF und OCR werden lokal gelesen. Kein Bankkonto wird belastet.",
       "files": "Quartalsauszüge (.pdf)",
       "reading": "Lokal lesen: {{progress}} %",
-      "error": "Auszug konnte nicht geprüft werden. Keine Aktivitäten vorbereitet. PDF prüfen und vollständigen Verlauf importieren.",
+      "error": "Auszug konnte nicht geprüft werden. Keine Aktivitäten vorbereitet. PDF und gemeldetes Problem prüfen.",
       "accountError": "Alle Aktivitäten im ausgewählten Vorsorgekonto belassen.",
       "quoteError": "Aktivitäten sind möglicherweise gespeichert, der Schlusskurs jedoch nicht. Kurse prüfen und ohne erzwungene Duplikate erneut versuchen."
+    },
+    "kraken": {
+      "title": "Kraken Spot",
+      "description": "Importiere Kraken-Spot-Ledger und Trades in ihren ursprünglichen Währungen. Krypto-Auszahlungen werden mit dem ausgewählten Wallet-Konto verknüpft.",
+      "files": "Kraken-CSV-Exporte (Ledger und Trades)",
+      "walletAccount": "Zielkonto des Wallets",
+      "walletHelp": "Ein Wallet-Konto ist nur erforderlich, wenn der Auszug Krypto-Auszahlungen enthält. Beide Seiten der Überweisung werden importiert.",
+      "reading": "Kraken-Dateien werden gelesen und abgeglichen…",
+      "error": "Kraken-Dateien konnten nicht abgeglichen werden. Es wurden keine Aktivitäten vorbereitet. Prüfe die Dateien und den Fehlercode.",
+      "prepared": "{{purchases}} Käufe und {{total}} Aktivitäten vorbereitet. Anfangs- und Endsalden nach Asset:",
+      "walletPlaceholder": "Wallet-Konto auswählen",
+      "walletEmpty": "Erstelle für Krypto-Auszahlungen ein aktives Anlagekonto mit Transaktionsverfolgung für deine Wallet."
     }
   },
   "validation": {
@@ -1581,5 +1593,6 @@
     "difference": "Differenz (abgerechnet − berechnet)",
     "reason": "Ursache ungeklärt. Diese Differenz wird nicht als separate Ausgabe gebucht.",
     "link": "Zugehörige Diskussion (Rankia)"
-  }
+  },
+  "subtype_fee_in_kind": "Gebühr in Asset"
 }

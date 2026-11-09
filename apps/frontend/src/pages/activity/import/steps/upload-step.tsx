@@ -43,6 +43,7 @@ import { CSVFileViewer, type CSVLine } from "../components/csv-file-viewer";
 import { FileDropzone } from "../components/file-dropzone";
 import { InversisImportPanel } from "../components/inversis-import-panel";
 import { SantanderPensionPanel } from "../components/santander-pension-panel";
+import { KrakenImportPanel } from "../components/kraken-import-panel";
 import { HelpTooltip } from "../components/help-tooltip";
 import {
   setAccountId,
@@ -568,12 +569,14 @@ export function UploadStep() {
   const { state, dispatch } = useImportContext();
   const { t } = useTranslation();
   const [parseError, setParseError] = useState<string | null>(null);
-  const [sourceMode, setSourceMode] = useState<"csv" | "inversis" | "santander">(
+  const [sourceMode, setSourceMode] = useState<"csv" | "inversis" | "santander" | "kraken">(
     state.sourceImport?.sourceId === "santander-pension"
       ? "santander"
       : state.sourceImport?.sourceId === "myinvestor-inversis"
         ? "inversis"
-        : "csv",
+        : state.sourceImport?.sourceId === "kraken"
+          ? "kraken"
+          : "csv",
   );
   const { accounts } = useAccounts();
   const { isMobile } = usePlatform();
@@ -591,6 +594,13 @@ export function UploadStep() {
     selectedAccount?.accountType === "SECURITIES" &&
     selectedAccount.trackingMode === "TRANSACTIONS" &&
     selectedAccount.currency.toUpperCase() === "EUR" &&
+    selectedAccount.isActive &&
+    !selectedAccount.isArchived;
+  const canImportKraken =
+    importType === ImportType.ACTIVITY &&
+    selectedAccount &&
+    importProfile.assetResolutionEnabled &&
+    selectedAccount.trackingMode === "TRANSACTIONS" &&
     selectedAccount.isActive &&
     !selectedAccount.isArchived;
   const baselineParseConfig = useMemo(
@@ -914,7 +924,7 @@ export function UploadStep() {
 
   const hasParseErrors = parseError !== null;
 
-  const handleSourceModeChange = (mode: "csv" | "inversis" | "santander") => {
+  const handleSourceModeChange = (mode: "csv" | "inversis" | "santander" | "kraken") => {
     if (mode === sourceMode) return;
     ++fileParseRun.current;
     sourceModeRef.current = mode;
@@ -924,9 +934,21 @@ export function UploadStep() {
     dispatch({ type: "CLEAR_SOURCE_IMPORT" });
   };
 
+  useEffect(() => {
+    if (!selectedAccount) return;
+    const unavailable =
+      ((sourceMode === "inversis" || sourceMode === "santander") && !canImportInversis) ||
+      (sourceMode === "kraken" && !canImportKraken);
+    if (!unavailable) return;
+    ++fileParseRun.current;
+    sourceModeRef.current = "csv";
+    setSourceMode("csv");
+    dispatch({ type: "CLEAR_SOURCE_IMPORT" });
+  }, [selectedAccount, sourceMode, canImportInversis, canImportKraken, dispatch]);
+
   return (
     <div className="flex flex-col gap-4">
-      {canImportInversis && (
+      {(canImportInversis || canImportKraken) && (
         <div aria-label={t("activity:import.inversis.modeLabel")} className="flex flex-wrap gap-2">
           <Button
             type="button"
@@ -937,24 +959,39 @@ export function UploadStep() {
           >
             {t("activity:import.inversis.csvMode")}
           </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={sourceMode === "inversis" ? "default" : "outline"}
-            aria-pressed={sourceMode === "inversis"}
-            onClick={() => handleSourceModeChange("inversis")}
-          >
-            {t("activity:import.inversis.mode")}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={sourceMode === "santander" ? "default" : "outline"}
-            aria-pressed={sourceMode === "santander"}
-            onClick={() => handleSourceModeChange("santander")}
-          >
-            {t("activity:import.santander.title")}
-          </Button>
+          {canImportKraken && (
+            <Button
+              type="button"
+              size="sm"
+              variant={sourceMode === "kraken" ? "default" : "outline"}
+              aria-pressed={sourceMode === "kraken"}
+              onClick={() => handleSourceModeChange("kraken")}
+            >
+              {t("activity:import.kraken.title")}
+            </Button>
+          )}
+          {canImportInversis && (
+            <Button
+              type="button"
+              size="sm"
+              variant={sourceMode === "inversis" ? "default" : "outline"}
+              aria-pressed={sourceMode === "inversis"}
+              onClick={() => handleSourceModeChange("inversis")}
+            >
+              {t("activity:import.inversis.mode")}
+            </Button>
+          )}
+          {canImportInversis && (
+            <Button
+              type="button"
+              size="sm"
+              variant={sourceMode === "santander" ? "default" : "outline"}
+              aria-pressed={sourceMode === "santander"}
+              onClick={() => handleSourceModeChange("santander")}
+            >
+              {t("activity:import.santander.title")}
+            </Button>
+          )}
         </div>
       )}
       {/* Primary actions: Account + File upload */}
@@ -1036,7 +1073,20 @@ export function UploadStep() {
         )}
       </div>
 
-      {sourceMode === "santander" && canImportInversis ? (
+      {sourceMode === "kraken" && canImportKraken ? (
+        <KrakenImportPanel
+          key={state.accountId}
+          accounts={accounts ?? []}
+          accountId={state.accountId}
+          onPrepared={(drafts) =>
+            dispatch({
+              type: "SET_SOURCE_IMPORT",
+              payload: { sourceId: "kraken", drafts },
+            })
+          }
+          onReset={() => dispatch({ type: "CLEAR_SOURCE_IMPORT" })}
+        />
+      ) : sourceMode === "santander" && canImportInversis ? (
         <SantanderPensionPanel
           key={state.accountId}
           accountId={state.accountId}

@@ -433,6 +433,7 @@ fn footprint(event: &EconomicEvent) -> impl Iterator<Item = &AssetId> {
     let (first, second) = match &event.action {
         Action::None => (None, None),
         Action::Trade { asset, .. }
+        | Action::AssetFee { asset, .. }
         | Action::SecurityTransfer { asset, .. }
         | Action::Split { asset, .. }
         | Action::OptionExpiry { asset, .. }
@@ -925,6 +926,39 @@ impl Projector<'_> {
                 ),
                 Direction::Out => self.transfer_out(event, state, asset, *quantity, effects, run),
             },
+            Action::AssetFee { asset, quantity } => {
+                if *quantity <= Decimal::ZERO {
+                    return Err("asset fee requires a positive quantity".into());
+                }
+                let account_currency = state.currency.clone();
+                let account_id = state.account.clone();
+                let position = state
+                    .positions
+                    .get_mut(asset)
+                    .ok_or("no position to pay asset fee")?;
+                if position.quantity < *quantity {
+                    return Err("insufficient units to pay asset fee".into());
+                }
+                let position_currency = position.currency.clone();
+                let reduction = self.relieve_lots(
+                    &account_id,
+                    account_currency.as_str(),
+                    event,
+                    position,
+                    *quantity,
+                    false,
+                )?;
+                self.record_reduction(
+                    &account_id,
+                    asset,
+                    event,
+                    &reduction,
+                    Proceeds::AtCost,
+                    &position_currency,
+                    effects,
+                    run,
+                )
+            }
             Action::Split { asset, ratio } => self.split(event, state, asset, *ratio),
             Action::OptionExpiry { asset, quantity } => {
                 self.option_expiry(event, state, asset, *quantity, effects, run)

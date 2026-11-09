@@ -4891,6 +4891,52 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn in_kind_btc_fee_round_trips_through_bulk_import_storage() {
+        let (pool, writer, _dir) = setup_db();
+        let repo = ActivityRepository::new(pool.clone(), writer);
+        let mut conn = get_connection(&pool).expect("conn");
+        insert_account(&mut conn, "kraken");
+        diesel::insert_into(assets::table)
+            .values((
+                assets::id.eq("btc-eur"),
+                assets::kind.eq("INVESTMENT"),
+                assets::is_active.eq(1),
+                assets::quote_mode.eq("MARKET"),
+                assets::quote_ccy.eq("EUR"),
+                assets::created_at.eq("2026-01-02T00:00:00+00:00"),
+                assets::updated_at.eq("2026-01-02T00:00:00+00:00"),
+            ))
+            .execute(&mut conn)
+            .expect("BTC asset");
+        drop(conn);
+        let imported: wealthfolio_core::activities::ActivityImport =
+            serde_json::from_value(serde_json::json!({
+                "date": "2026-01-02T10:00:00Z", "symbol": "BTC-EUR", "assetId": "btc-eur",
+                "activityType": "FEE", "subtype": "FEE_IN_KIND", "accountId": "kraken",
+                "currency": "USD", "quantity": "0.001", "unitPrice": "100",
+                "amount": "0.1", "isValid": true, "isDraft": false
+            }))
+            .expect("fee import");
+        let created = repo
+            .create_activities_returning(vec![NewActivity::from(imported)])
+            .await
+            .expect("bulk insert asset fee");
+        let reloaded = repo.get_activity(&created[0].id).expect("reload fee");
+        assert_eq!(reloaded.subtype.as_deref(), Some("FEE_IN_KIND"));
+        assert_eq!(reloaded.asset_id.as_deref(), Some("btc-eur"));
+        assert_eq!(reloaded.quantity, Some(Decimal::new(1, 3)));
+        assert_eq!(reloaded.amount, Some(Decimal::new(1, 1)));
+        assert_eq!(
+            wealthfolio_core::portfolio::economic_events::ActivityEconomicsResolver::resolve_cash(
+                &reloaded,
+                Decimal::ONE,
+            )
+            .signed_cash_effect,
+            None
+        );
+    }
+
+    #[tokio::test]
     async fn source_reconciliation_round_trips_through_sqlite_and_approval() {
         let (pool, writer, _dir) = setup_db();
         let repo = ActivityRepository::new(pool.clone(), writer);

@@ -1308,12 +1308,24 @@
     },
     "santander": {
       "title": "معاشات سانتاندير (PDF)",
-      "description": "استورد السجل الكامل من رصيد افتتاحي صفري إلى هذه الخطة فقط. قراءة PDF وOCR محلية. لن يُخصم شيء من أي حساب بنكي.",
+      "description": "استورد كشفًا ربع سنوي واحدًا أو أكثر. تُستورد العمليات المعروضة فقط، ولا تُضاف الوحدات في الرصيد الافتتاحي. قراءة PDF وOCR محلية. لن يُخصم شيء من أي حساب بنكي.",
       "files": "كشوف ربع سنوية (.pdf)",
       "reading": "قراءة محلية: {{progress}}%",
-      "error": "تعذر التحقق من الكشف. لم تُجهز أنشطة. تحقق من PDF واستورد السجل الكامل.",
+      "error": "تعذر التحقق من الكشف. لم تُجهز أنشطة. تحقق من ملف PDF والمشكلة الموضحة.",
       "accountError": "احتفظ بكل الأنشطة في حساب الخطة المحدد.",
       "quoteError": "قد تكون الأنشطة محفوظة، لكن تعذر حفظ سعر الإغلاق. راجع الأسعار وأعد المحاولة دون فرض التكرارات."
+    },
+    "kraken": {
+      "title": "Kraken Spot",
+      "description": "Import Kraken Spot ledger and trade exports in their original currencies. Crypto withdrawals are linked to the wallet account you select.",
+      "files": "Kraken CSV exports (ledger and trades)",
+      "walletAccount": "Wallet destination account",
+      "walletHelp": "A wallet account is only required when the statement includes crypto withdrawals. Both transfer entries will be imported.",
+      "reading": "Reading and reconciling Kraken exports…",
+      "error": "The Kraken exports could not be reconciled. No activities were prepared. Check both files and the diagnostic code.",
+      "prepared": "{{purchases}} purchases and {{total}} activities prepared. Opening and closing balances by ledger asset:",
+      "walletPlaceholder": "Select a wallet account",
+      "walletEmpty": "For crypto withdrawals, create an active investment account with transaction tracking for your wallet."
     }
   },
   "import_activities": "استيراد الأنشطة",
@@ -1777,5 +1789,6 @@
     "difference": "الفرق (المسوّى − المحسوب)",
     "reason": "السبب غير محدد. لا يُسجّل هذا الفرق كمصروف إضافي.",
     "link": "نقاش ذو صلة (Rankia)"
-  }
+  },
+  "subtype_fee_in_kind": "Fee paid in asset"
 }

@@ -628,6 +628,19 @@ export function validateDraft(
 
   // FEE validation - either fee or amount required
   if (activityType === ActivityType.FEE) {
+    if (subtype === ACTIVITY_SUBTYPES.FEE_IN_KIND) {
+      if (!draft.symbol) {
+        errors.symbol = [
+          localMessage("activity:validation.symbol_is_required_for_trade_activities"),
+        ];
+      }
+      if (!hasPositiveValue(draft.quantity)) {
+        errors.quantity = [localMessage("activity:validation.quantity_must_be_greater_than_0")];
+      }
+      if (!hasPositiveValue(draft.amount)) {
+        errors.amount = [localMessage("activity:validation.fee_or_amount")];
+      }
+    }
     const hasFee = hasPositiveValue(draft.fee);
     const hasAmount = hasPositiveValue(draft.amount);
     if (!hasFee && !hasAmount) {

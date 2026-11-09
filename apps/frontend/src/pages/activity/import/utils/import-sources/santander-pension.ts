@@ -50,6 +50,25 @@ function field(summary: string, label: string): string {
 }
 const abs = (value: bigint) => (value < 0n ? -value : value);
 
+function matchesPrintedValuation(quantity: string, price: string, value: string): boolean {
+  const halfStep = (number: string) => {
+    const precision = number.split(".")[1]?.length ?? 0;
+    return SCALE / 10n ** BigInt(precision) / 2n;
+  };
+  const units = scaled(quantity);
+  const unitPrice = scaled(price);
+  const unitsRounding = halfStep(quantity);
+  const priceRounding = halfStep(price);
+  // The statement rounds units and NAV independently, then prints the total in
+  // cents. Their product can differ by more than one cent for larger positions.
+  const tolerance =
+    abs(units) * priceRounding +
+    abs(unitPrice) * unitsRounding +
+    unitsRounding * priceRounding +
+    halfStep(value) * SCALE;
+  return abs(units * unitPrice - scaled(value) * SCALE) <= tolerance;
+}
+
 export function parseSantanderPension(page: PensionPdfPage, accountId: string): PensionStatement {
   const header = normalize(page.header);
   if (!header.includes("SANTANDER") || !header.includes("EXTRACTO DE MOVIMIENTOS"))
@@ -75,10 +94,7 @@ export function parseSantanderPension(page: PensionPdfPage, accountId: string): 
     SCALE / 100n
   )
     throw new Error("summary-value-mismatch");
-  if (
-    abs((scaled(closingUnits) * scaled(closingPrice)) / SCALE - scaled(closingValue)) >
-    SCALE / 100n
-  )
+  if (!matchesPrintedValuation(closingUnits, closingPrice, closingValue))
     throw new Error("closing-valuation-mismatch");
   const opening = page.rows.find((row) => normalize(row.concept).includes("SALDO ANTERIOR"));
   if (!opening) throw new Error("missing-control");
@@ -109,7 +125,10 @@ export function parseSantanderPension(page: PensionPdfPage, accountId: string): 
       price = decimal(row.price);
     if ([amount, quantity, price].some((value) => scaled(value) <= 0n))
       throw new Error("invalid-number");
-    const contribution = /^AP[. ]*\s*(PROMOTOR|PARTICIPE|VOLUNTARIA)/.test(concept);
+    const contribution =
+      /^AP[. ]*\s*(PROMOTOR|PARTICIPE|VOLUNTARIA|COMPLEMENTARIA PROMOTOR|VOL[. ]+RECAUDADAS POR NOMINA)/.test(
+        concept,
+      ) || concept === "APORTACION ADICIONAL";
     const transfer = /^(INGR[. ]*TRASPASO|INGRESO POR TRASPASO)/.test(concept);
     if (!contribution && !transfer) throw new Error("unknown-operation");
     if (abs((scaled(quantity) * scaled(price)) / SCALE - scaled(amount)) > SCALE / 100n)
@@ -172,18 +191,6 @@ export function prepareSantanderPension(statements: PensionStatement[]): {
   statements: PensionStatement[];
 } {
   const ordered = [...statements].sort((a, b) => a.closingDate.localeCompare(b.closingDate));
-  if (!ordered.length || scaled(ordered[0].openingUnits) !== 0n) throw new Error("missing-history");
-  for (let index = 1; index < ordered.length; index++) {
-    const previous = ordered[index - 1],
-      next = ordered[index];
-    if (
-      previous.symbol !== next.symbol ||
-      previous.closingDate === next.closingDate ||
-      scaled(previous.closingUnits) !== scaled(next.openingUnits) ||
-      next.drafts.some((draft) => draft.activityDate <= previous.closingDate)
-    )
-      throw new Error("overlapping-history");
-  }
   return {
     statements: ordered,
     drafts: ordered

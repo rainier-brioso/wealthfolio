@@ -1563,12 +1563,24 @@
     },
     "santander": {
       "title": "Santander pensiones (PDF)",
-      "description": "Importa el histórico completo desde saldo inicial cero solo en este plan. La lectura del PDF y el OCR son locales. No se descuenta dinero de ninguna cuenta bancaria.",
+      "description": "Importa uno o varios extractos trimestrales. Solo se importan las operaciones que aparecen; no se añaden las participaciones del saldo inicial. La lectura del PDF y el OCR son locales. No se descuenta dinero de ninguna cuenta bancaria.",
       "files": "Extractos trimestrales (.pdf)",
       "reading": "Leyendo localmente: {{progress}}%",
-      "error": "No se ha podido verificar el extracto. No se han preparado actividades. Comprueba el PDF e importa el histórico completo.",
+      "error": "No se ha podido verificar el extracto. No se han preparado actividades. Comprueba el PDF y el problema indicado.",
       "accountError": "Mantén todas las actividades en la cuenta del plan seleccionada.",
       "quoteError": "Las actividades pueden estar guardadas, pero no se ha podido guardar el precio de cierre. Revisa los precios y reintenta sin forzar duplicados."
+    },
+    "kraken": {
+      "title": "Kraken Spot",
+      "description": "Importa los CSV de ledger y trades de Kraken Spot conservando sus divisas originales. Las retiradas de criptomonedas se enlazan con la cuenta wallet que selecciones.",
+      "files": "Archivos CSV de Kraken (movimientos y operaciones)",
+      "walletAccount": "Cuenta de destino de la wallet",
+      "walletHelp": "Solo necesitas seleccionar una wallet si el extracto contiene retiradas de criptomonedas. Se importarán ambos lados del traspaso.",
+      "reading": "Leyendo y conciliando los archivos de Kraken…",
+      "error": "No se pudieron conciliar los archivos de Kraken. No se prepararon operaciones. Comprueba los archivos y el código del error.",
+      "prepared": "{{purchases}} compras y {{total}} operaciones preparadas. Saldos iniciales y finales por activo:",
+      "walletPlaceholder": "Selecciona la cuenta wallet",
+      "walletEmpty": "Para registrar retiradas de criptomonedas, crea una cuenta de inversión activa con seguimiento por operaciones para tu wallet."
     }
   },
   "validation": {
@@ -1630,5 +1642,6 @@
     "difference": "Diferencia (liquidado − calculado)",
     "reason": "Causa no determinada. Esta diferencia no se registra como un gasto adicional.",
     "link": "Conversación relacionada (Rankia)"
-  }
+  },
+  "subtype_fee_in_kind": "Comisión pagada en activo"
 }

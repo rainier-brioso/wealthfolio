@@ -382,6 +382,7 @@ fn classify_legacy_activity_cash(
     let unit_multiplier = asset_facts.unit_multiplier;
     let inputs = ActivityCashInputs {
         activity_type,
+        subtype: activity.subtype.as_deref(),
         currency: &activity.currency,
         is_security_transfer: false,
         quantity: activity.quantity,

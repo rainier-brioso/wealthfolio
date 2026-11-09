@@ -109,6 +109,12 @@ export const isAssetBackedIncomeSubtype = (
  * Activity/subtype pairs that must carry a market asset identity.
  */
 export const isAssetIdentityRequired = (activityType: string, subtype?: string | null): boolean => {
+  if (
+    activityType?.trim().toUpperCase() === ActivityType.FEE &&
+    subtype?.trim().toUpperCase() === ACTIVITY_SUBTYPES.FEE_IN_KIND
+  ) {
+    return true;
+  }
   if (activityType === ActivityType.ADJUSTMENT) {
     const canonical = canonicalizeActivitySubtype(activityType, subtype);
     return (
@@ -132,6 +138,8 @@ export const needsImportAssetResolution = (
 ): boolean => {
   return (
     activityType === ActivityType.ADJUSTMENT ||
+    (activityType?.trim().toUpperCase() === ActivityType.FEE &&
+      subtype?.trim().toUpperCase() === ACTIVITY_SUBTYPES.FEE_IN_KIND) ||
     isSymbolRequired(activityType) ||
     isAssetBackedIncomeSubtype(activityType, subtype)
   );
@@ -151,7 +159,9 @@ export const shouldResolveImportAsset = (
     (isSymbolRequired(activityType) &&
       activityType !== ActivityType.DIVIDEND &&
       activityType !== ActivityType.ADJUSTMENT) ||
-    (activityType === ActivityType.ADJUSTMENT && isAssetIdentityRequired(activityType, subtype))
+    (activityType === ActivityType.ADJUSTMENT && isAssetIdentityRequired(activityType, subtype)) ||
+    (activityType?.trim().toUpperCase() === ActivityType.FEE &&
+      subtype?.trim().toUpperCase() === ACTIVITY_SUBTYPES.FEE_IN_KIND)
   ) {
     return true;
   }
@@ -402,6 +412,11 @@ export const calculateActivityCashImpact = (
 ): number => {
   if (activity.status && activity.status !== ActivityStatus.POSTED) return 0;
   if (activity.activityType === ActivityType.SPLIT) return 0;
+  if (
+    activity.activityType === ActivityType.FEE &&
+    activity.subtype?.trim().toUpperCase() === ACTIVITY_SUBTYPES.FEE_IN_KIND
+  )
+    return 0;
 
   if (isSecuritiesTransfer(activity.activityType, activity.assetSymbol, activity.assetId)) {
     const fee = Math.abs(Number(activity.fee ?? 0));

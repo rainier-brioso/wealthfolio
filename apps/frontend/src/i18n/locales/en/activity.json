@@ -1514,12 +1514,24 @@
     },
     "santander": {
       "title": "Santander pensions (PDF)",
-      "description": "Import complete statement history from a zero opening balance into this plan only. PDF reading and OCR run locally. No bank account is debited.",
+      "description": "Import one or more quarterly statements. Only the operations shown are imported; opening holdings are not added. PDF reading and OCR run locally. No bank account is debited.",
       "files": "Quarterly statements (.pdf)",
       "reading": "Reading locally: {{progress}}%",
-      "error": "The statement could not be verified. No activities were prepared. Check the PDF and import the complete history.",
+      "error": "The statement could not be verified. No activities were prepared. Check the PDF and the reported issue.",
       "accountError": "Keep every activity in the selected pension account.",
       "quoteError": "Activities may already be saved, but the closing price could not be saved. Review prices and retry without forcing duplicates."
+    },
+    "kraken": {
+      "title": "Kraken Spot",
+      "description": "Import Kraken Spot ledger and trade exports in their original currencies. Crypto withdrawals are linked to the wallet account you select.",
+      "files": "Kraken CSV exports (ledger and trades)",
+      "walletAccount": "Wallet destination account",
+      "walletHelp": "A wallet account is only required when the statement includes crypto withdrawals. Both transfer entries will be imported.",
+      "reading": "Reading and reconciling Kraken exports…",
+      "error": "The Kraken exports could not be reconciled. No activities were prepared. Check both files and the diagnostic code.",
+      "prepared": "{{purchases}} purchases and {{total}} activities prepared. Opening and closing balances by ledger asset:",
+      "walletPlaceholder": "Select a wallet account",
+      "walletEmpty": "For crypto withdrawals, create an active investment account with transaction tracking for your wallet."
     }
   },
   "validation": {
@@ -1581,5 +1593,6 @@
     "difference": "Difference (settled − calculated)",
     "reason": "Cause undetermined. This difference is not recorded as a separate expense.",
     "link": "Related discussion (Rankia)"
-  }
+  },
+  "subtype_fee_in_kind": "Fee paid in asset"
 }

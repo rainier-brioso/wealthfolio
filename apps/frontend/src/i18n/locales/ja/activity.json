@@ -1495,12 +1495,24 @@
     },
     "santander": {
       "title": "サンタンデール年金（PDF）",
-      "description": "開始残高ゼロからの全履歴をこのプランだけに取り込みます。PDFとOCRはローカルで処理し、銀行口座から引き落としません。",
+      "description": "四半期明細を1件以上取り込みます。記載された取引のみを取り込み、期首残高の口数は追加しません。PDFとOCRはローカルで処理し、銀行口座から引き落としません。",
       "files": "四半期明細（.pdf）",
       "reading": "ローカル読み取り：{{progress}}%",
-      "error": "明細を検証できませんでした。取引は準備されていません。PDFを確認し、全履歴を取り込んでください。",
+      "error": "明細を検証できませんでした。取引は準備されていません。PDFと表示された問題を確認してください。",
       "accountError": "すべての取引を選択した年金口座に保持してください。",
       "quoteError": "取引は保存済みの可能性がありますが、終値を保存できませんでした。価格を確認し、重複を強制せずに再試行してください。"
+    },
+    "kraken": {
+      "title": "Kraken Spot",
+      "description": "Import Kraken Spot ledger and trade exports in their original currencies. Crypto withdrawals are linked to the wallet account you select.",
+      "files": "Kraken CSV exports (ledger and trades)",
+      "walletAccount": "Wallet destination account",
+      "walletHelp": "A wallet account is only required when the statement includes crypto withdrawals. Both transfer entries will be imported.",
+      "reading": "Reading and reconciling Kraken exports…",
+      "error": "The Kraken exports could not be reconciled. No activities were prepared. Check both files and the diagnostic code.",
+      "prepared": "{{purchases}} purchases and {{total}} activities prepared. Opening and closing balances by ledger asset:",
+      "walletPlaceholder": "Select a wallet account",
+      "walletEmpty": "For crypto withdrawals, create an active investment account with transaction tracking for your wallet."
     }
   },
   "validation": {
@@ -1562,5 +1574,6 @@
     "difference": "差額（決済額 − 計算額）",
     "reason": "原因は未確定です。この差額は別の費用として記録されません。",
     "link": "関連する議論（Rankia）"
-  }
+  },
+  "subtype_fee_in_kind": "Fee paid in asset"
 }

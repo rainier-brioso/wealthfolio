@@ -1563,12 +1563,24 @@
     },
     "santander": {
       "title": "Pensões Santander (PDF)",
-      "description": "Importe todo o histórico desde saldo inicial zero apenas neste plano. Leitura e OCR locais. Nenhuma conta bancária será debitada.",
+      "description": "Importe um ou mais extratos trimestrais. Apenas as operações indicadas são importadas; as unidades iniciais não são adicionadas. Leitura PDF e OCR locais. Nenhuma conta bancária será debitada.",
       "files": "Extratos trimestrais (.pdf)",
       "reading": "Leitura local: {{progress}}%",
-      "error": "Não foi possível verificar o extrato. Nenhuma atividade preparada. Verifique o PDF e importe todo o histórico.",
+      "error": "Não foi possível verificar o extrato. Nenhuma atividade preparada. Verifique o PDF e o problema indicado.",
       "accountError": "Mantenha todas as atividades na conta do plano selecionada.",
       "quoteError": "As atividades podem estar guardadas, mas o preço de fecho não. Verifique os preços e tente novamente sem forçar duplicados."
+    },
+    "kraken": {
+      "title": "Kraken Spot",
+      "description": "Import Kraken Spot ledger and trade exports in their original currencies. Crypto withdrawals are linked to the wallet account you select.",
+      "files": "Kraken CSV exports (ledger and trades)",
+      "walletAccount": "Wallet destination account",
+      "walletHelp": "A wallet account is only required when the statement includes crypto withdrawals. Both transfer entries will be imported.",
+      "reading": "Reading and reconciling Kraken exports…",
+      "error": "The Kraken exports could not be reconciled. No activities were prepared. Check both files and the diagnostic code.",
+      "prepared": "{{purchases}} purchases and {{total}} activities prepared. Opening and closing balances by ledger asset:",
+      "walletPlaceholder": "Select a wallet account",
+      "walletEmpty": "For crypto withdrawals, create an active investment account with transaction tracking for your wallet."
     }
   },
   "validation": {
@@ -1630,5 +1642,6 @@
     "difference": "Diferença (liquidado − calculado)",
     "reason": "Causa não determinada. Esta diferença não é registada como despesa adicional.",
     "link": "Discussão relacionada (Rankia)"
-  }
+  },
+  "subtype_fee_in_kind": "Fee paid in asset"
 }

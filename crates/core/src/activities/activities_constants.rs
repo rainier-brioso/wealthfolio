@@ -36,6 +36,9 @@ pub const ACTIVITY_TYPE_TRANSFER_OUT: &str = "TRANSFER_OUT";
 /// Stand-alone brokerage or platform fee not tied to a trade. Decreases cash.
 pub const ACTIVITY_TYPE_FEE: &str = "FEE";
 
+/// Fee settled by reducing units of the referenced asset, with no cash movement.
+pub const ACTIVITY_SUBTYPE_FEE_IN_KIND: &str = "FEE_IN_KIND";
+
 /// Tax paid from the account (e.g., withholding or realised CGT). Decreases cash.
 pub const ACTIVITY_TYPE_TAX: &str = "TAX";
 

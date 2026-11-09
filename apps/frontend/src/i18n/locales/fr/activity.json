@@ -1563,12 +1563,24 @@
     },
     "santander": {
       "title": "Retraite Santander (PDF)",
-      "description": "Importez tout l’historique depuis un solde initial nul dans ce plan uniquement. Lecture et OCR locaux. Aucun compte bancaire débité.",
+      "description": "Importez un ou plusieurs relevés trimestriels. Seules les opérations indiquées sont importées ; les parts du solde initial ne sont pas ajoutées. Lecture PDF et OCR locaux. Aucun compte bancaire débité.",
       "files": "Relevés trimestriels (.pdf)",
       "reading": "Lecture locale : {{progress}} %",
-      "error": "Le relevé n’a pas pu être vérifié. Aucune activité préparée. Vérifiez le PDF et importez tout l’historique.",
+      "error": "Le relevé n’a pas pu être vérifié. Aucune activité préparée. Vérifiez le PDF et le problème indiqué.",
       "accountError": "Conservez les activités dans le compte du plan sélectionné.",
       "quoteError": "Les activités peuvent être enregistrées, mais pas le cours de clôture. Vérifiez les cours et réessayez sans forcer les doublons."
+    },
+    "kraken": {
+      "title": "Kraken Spot",
+      "description": "Importez les exports ledger et trades de Kraken Spot dans leurs devises d’origine. Les retraits de cryptomonnaies sont liés au compte wallet sélectionné.",
+      "files": "Exports CSV Kraken (ledger et trades)",
+      "walletAccount": "Compte de destination du wallet",
+      "walletHelp": "Un compte wallet est nécessaire uniquement si le relevé contient des retraits de cryptomonnaies. Les deux mouvements du transfert seront importés.",
+      "reading": "Lecture et rapprochement des exports Kraken…",
+      "error": "Impossible de rapprocher les exports Kraken. Aucune activité n’a été préparée. Vérifiez les fichiers et le code d’erreur.",
+      "prepared": "{{purchases}} achats et {{total}} activités préparés. Soldes initial et final par actif :",
+      "walletPlaceholder": "Sélectionner un compte wallet",
+      "walletEmpty": "Pour les retraits de cryptomonnaies, créez un compte d’investissement actif avec suivi des opérations pour votre wallet."
     }
   },
   "validation": {
@@ -1630,5 +1642,6 @@
     "difference": "Écart (réglé − calculé)",
     "reason": "Cause indéterminée. Cet écart n’est pas enregistré comme une dépense supplémentaire.",
     "link": "Discussion associée (Rankia)"
-  }
+  },
+  "subtype_fee_in_kind": "Frais payés en actif"
 }

@@ -42,6 +42,64 @@ Valor Unidad de Cuenta al final del periodo 1,69667`,
   };
 }
 describe("Santander pension statements", () => {
+  function roundedClosingFixture(): PensionPdfPage {
+    const page = statementFixture();
+    page.summary = `DATOS ECONOMICOS AL 31.03.2026
+Derecho consolidado al inicio del periodo 0,00
+Total operaciones de Entrada en el periodo 2.500,01
+Total operaciones de Salida en el periodo 0,00
+Revalorización del Periodo 0,00
+Derecho consolidado al final del periodo 2.500,01
+Unidades de Cuenta Totales 2.500,00000
+Valor Unidad de Cuenta al final del periodo 1,00001`;
+    page.rows = [
+      page.rows[0],
+      {
+        operationDate: "01.03.2026",
+        valueDate: "27.03.2026",
+        concept: "AP. PROMOTOR SERV. CORRIENTES",
+        amount: "2.500,01",
+        units: "2.500,00000",
+        price: "1,00000",
+      },
+    ];
+    return page;
+  }
+
+  it("accepts closing differences explained by the precision printed in the statement", () => {
+    const result = parseSantanderPension(roundedClosingFixture(), "pension");
+    expect(result).toMatchObject({
+      closingUnits: "2500.00000",
+      closingPrice: "1.00001",
+      closingValue: "2500.01",
+    });
+    expect(result.drafts[1]).toMatchObject({
+      amount: "2500.01",
+      quantity: "2500.00000",
+      unitPrice: "1.00000",
+    });
+  });
+
+  it("rejects closing differences beyond the printed rounding precision", () => {
+    const page = roundedClosingFixture();
+    page.summary = page.summary
+      .replace("Revalorización del Periodo 0,00", "Revalorización del Periodo -0,01")
+      .replace("final del periodo 2.500,01", "final del periodo 2.500,00");
+    expect(() => parseSantanderPension(page, "pension")).toThrow("closing-valuation-mismatch");
+  });
+
+  it.each([
+    "APORTACIÓN ADICIONAL",
+    "AP. COMPLEMENTARIA PROMOTOR",
+    "AP. VOL. RECAUDADAS POR NÓMINA",
+  ])("imports %s as a contribution within the pension account", (concept) => {
+    const page = statementFixture();
+    page.rows[1].concept = concept;
+    const result = parseSantanderPension(page, "pension");
+    expect(result.drafts.slice(0, 2).map((row) => row.activityType)).toEqual(["DEPOSIT", "BUY"]);
+    expect(result.drafts.slice(0, 2).every((row) => row.accountId === "pension")).toBe(true);
+  });
+
   it("reconstructs the five operations and closing position without touching a bank account", () => {
     const result = prepareSantanderPension([parseSantanderPension(statementFixture(), "pension")]);
     expect(result.drafts).toHaveLength(8);
@@ -105,11 +163,40 @@ describe("Santander pension statements", () => {
     page.summary = page.summary.replace("Salida en el periodo 0,00", "Salida en el periodo 1,00");
     expect(() => parseSantanderPension(page, "pension")).toThrow("unsupported-exit");
   });
-  it("rejects duplicated quarters and an incomplete starting history", () => {
+  it("imports a standalone statement with opening holdings without inventing opening activities", () => {
+    const page = statementFixture();
+    page.summary = page.summary
+      .replace("inicio del periodo 0,00", "inicio del periodo 172,25")
+      .replace("-73,82", "-76,40")
+      .replace("2.466,75", "2.636,42")
+      .replace("1.453,87943", "1.553,87943");
+    page.rows[0] = { ...page.rows[0], amount: "172,25", units: "100,00000" };
+    page.rows[page.rows.length - 1].units = "1.553,87943";
+    const parsed = parseSantanderPension(page, "pension");
+    const result = prepareSantanderPension([parsed]);
+    expect(result.statements[0].openingUnits).toBe("100.00000");
+    expect(result.drafts).toHaveLength(8);
+    expect(result.drafts).toEqual(parsed.drafts.map((draft, rowIndex) => ({ ...draft, rowIndex })));
+  });
+
+  it("leaves repeated statements for the normal activity duplicate review", () => {
     const parsed = parseSantanderPension(statementFixture(), "pension");
-    expect(() => prepareSantanderPension([parsed, parsed])).toThrow("overlapping-history");
-    expect(() => prepareSantanderPension([{ ...parsed, openingUnits: "1.00000" }])).toThrow(
-      "missing-history",
+    const result = prepareSantanderPension([parsed, parsed]);
+    expect(result.drafts).toHaveLength(16);
+    expect(result.drafts.slice(8).map((draft) => draft.comment)).toEqual(
+      result.drafts.slice(0, 8).map((draft) => draft.comment),
     );
+    expect(new Set(result.drafts.map((draft) => draft.rowIndex)).size).toBe(16);
+  });
+
+  it("prepares independent periods without requiring continuity with other selected files", () => {
+    const parsed = parseSantanderPension(statementFixture(), "pension");
+    const later = { ...parsed, closingDate: "2026-09-30", openingUnits: "2000.00000" };
+    const result = prepareSantanderPension([later, parsed]);
+    expect(result.statements.map((statement) => statement.closingDate)).toEqual([
+      "2026-03-31",
+      "2026-09-30",
+    ]);
+    expect(result.drafts).toHaveLength(16);
   });
 });

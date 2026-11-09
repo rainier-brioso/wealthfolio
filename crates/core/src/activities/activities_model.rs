@@ -431,6 +431,16 @@ pub struct NewActivity {
 }
 
 impl NewActivity {
+    pub fn is_fee_in_kind(activity_type: &str, subtype: Option<&str>) -> bool {
+        activity_type.eq_ignore_ascii_case(ACTIVITY_TYPE_FEE)
+            && subtype.is_some_and(|value| {
+                value
+                    .trim()
+                    .replace([' ', '-'], "_")
+                    .eq_ignore_ascii_case(crate::activities::ACTIVITY_SUBTYPE_FEE_IN_KIND)
+            })
+    }
+
     pub fn canonicalize_subtype(subtype: Option<&str>) -> Option<String> {
         let subtype = subtype.map(str::trim).filter(|value| !value.is_empty())?;
 
@@ -585,6 +595,23 @@ impl NewActivity {
         }
 
         validate_activity_date(&self.activity_date)?;
+
+        if Self::is_fee_in_kind(&self.activity_type, self.subtype.as_deref())
+            && (self
+                .quantity
+                .is_none_or(|quantity| quantity <= Decimal::ZERO)
+                || self.amount.is_none_or(|amount| amount <= Decimal::ZERO)
+                || ![self.get_asset_resolution_id(), self.get_asset_symbol()]
+                    .into_iter()
+                    .flatten()
+                    .any(|value| !value.trim().is_empty())
+                || self.fee.is_some_and(|fee| !fee.is_zero())
+                || self.tax.is_some_and(|tax| !tax.is_zero()))
+        {
+            return Err(ActivityError::InvalidData(
+                "Fees in kind require an asset and positive units, without cash charges".into(),
+            ));
+        }
 
         let subtype =
             Self::canonicalize_subtype_for_activity(&self.activity_type, self.subtype.as_deref());

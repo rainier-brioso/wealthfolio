@@ -1753,7 +1753,7 @@ pub(crate) mod tests {
                     activity_type: new_activity.activity_type,
                     activity_type_override: None,
                     source_type: None,
-                    subtype: None,
+                    subtype: new_activity.subtype,
                     status: new_activity
                         .status
                         .unwrap_or(crate::activities::ActivityStatus::Posted),
@@ -17534,6 +17534,115 @@ pub(crate) mod tests {
         assert_eq!(stored[0].amount, None);
         assert!(!stored[0].needs_review);
         assert_eq!(stored[0].status, ActivityStatus::Posted);
+    }
+
+    #[tokio::test]
+    async fn import_links_quantity_only_crypto_transfers_and_keeps_in_kind_fee_asset() {
+        let asset = create_test_asset_with_instrument(
+            "btc-eur",
+            "BTC-EUR",
+            None,
+            Some(InstrumentType::Crypto),
+            "EUR",
+        );
+        let account_service = Arc::new(MockAccountService::new());
+        account_service.add_account(create_test_account("kraken", "EUR"));
+        account_service.add_account(create_test_account("wallet", "EUR"));
+        let asset_service = Arc::new(MockAssetService::new());
+        asset_service.add_asset(asset);
+        let repository = Arc::new(MockActivityRepository::new());
+        let service = ActivityService::new(
+            repository.clone(),
+            account_service,
+            asset_service,
+            Arc::new(MockFxService::new()),
+            Arc::new(MockQuoteService),
+        );
+
+        // Both legs have the same timestamp and carry only units, like
+        // Kraken's withdrawal rows. The linker must use the asset quantity.
+        let mut transfer_out = qa_import_row("kraken", "TRANSFER_OUT", "EUR");
+        transfer_out.date = "2025-01-02T10:00:00Z".to_string();
+        transfer_out.symbol = "BTC-EUR".to_string();
+        transfer_out.asset_id = Some("btc-eur".to_string());
+        transfer_out.instrument_type = Some("CRYPTO".to_string());
+        transfer_out.quote_ccy = Some("EUR".to_string());
+        transfer_out.quantity = Some(dec!(0.05));
+        transfer_out.account_id = Some("kraken".to_string());
+        transfer_out.is_external = Some(true);
+        transfer_out.line_number = Some(1);
+
+        let mut transfer_in = transfer_out.clone();
+        transfer_in.activity_type = "TRANSFER_IN".to_string();
+        transfer_in.account_id = Some("wallet".to_string());
+        transfer_in.line_number = Some(2);
+        transfer_in.comment = Some("Kraken wallet withdrawal".to_string());
+
+        let mut fee = qa_import_row("kraken", "FEE", "USD");
+        fee.date = "2025-01-02T10:00:00Z".to_string();
+        fee.symbol = "BTC-EUR".to_string();
+        fee.asset_id = Some("btc-eur".to_string());
+        fee.instrument_type = Some("CRYPTO".to_string());
+        fee.quote_ccy = Some("EUR".to_string());
+        fee.quantity = Some(dec!(0.001));
+        fee.amount = Some(dec!(0.1));
+        fee.subtype = Some("FEE_IN_KIND".to_string());
+        fee.line_number = Some(3);
+
+        let result = service
+            .import_activities(vec![transfer_out, transfer_in, fee])
+            .await
+            .expect("Kraken rows should import");
+        assert!(result.summary.success);
+        assert_eq!(result.summary.imported, 3);
+        let stored = repository.get_activities().expect("stored rows");
+        assert_eq!(stored.len(), 3);
+        let out = stored
+            .iter()
+            .find(|row| row.activity_type == "TRANSFER_OUT")
+            .expect("outgoing transfer");
+        let incoming = stored
+            .iter()
+            .find(|row| row.activity_type == "TRANSFER_IN")
+            .expect("incoming transfer");
+        assert_eq!(out.quantity, Some(dec!(0.05)));
+        assert_eq!(incoming.quantity, Some(dec!(0.05)));
+        assert_eq!(out.source_group_id, incoming.source_group_id);
+        assert!(
+            out.source_group_id.is_some(),
+            "the transfer pair should link"
+        );
+        for transfer in [out, incoming] {
+            assert_eq!(
+                transfer
+                    .metadata
+                    .as_ref()
+                    .and_then(|metadata| metadata.get("flow"))
+                    .and_then(|flow| flow.get("is_external"))
+                    .and_then(|value| value.as_bool()),
+                Some(false),
+                "a matched wallet transfer is internal"
+            );
+        }
+
+        let fee = stored
+            .iter()
+            .find(|row| row.activity_type == "FEE")
+            .expect("asset fee");
+        assert_eq!(fee.subtype.as_deref(), Some("FEE_IN_KIND"));
+        assert_eq!(fee.asset_id.as_deref(), Some("btc-eur"));
+        assert_eq!(fee.quantity, Some(dec!(0.001)));
+        assert_eq!(fee.amount, Some(dec!(0.1)));
+        assert!(!fee.needs_review);
+        assert_eq!(
+            crate::portfolio::economic_events::ActivityEconomicsResolver::resolve_cash(
+                fee,
+                Decimal::ONE,
+            )
+            .signed_cash_effect,
+            None,
+            "an in-kind fee does not change cash"
+        );
     }
 
     #[tokio::test]

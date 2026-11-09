@@ -1514,12 +1514,24 @@
     },
     "santander": {
       "title": "桑坦德退休金（PDF）",
-      "description": "僅向此計劃匯入期初餘額為零的完整歷史。PDF與OCR均在本機處理，不扣除任何銀行帳戶資金。",
+      "description": "匯入一份或多份季度對帳單。僅匯入列出的交易，不新增期初持有單位。PDF與OCR均在本機處理，不扣除任何銀行帳戶資金。",
       "files": "季度對帳單（.pdf）",
       "reading": "本機讀取：{{progress}}%",
-      "error": "無法核驗對帳單，未準備任何活動。請檢查PDF並匯入完整歷史。",
+      "error": "無法核驗對帳單，未準備任何活動。請檢查PDF和提示的問題。",
       "accountError": "請將所有活動保留在所選退休金帳戶。",
       "quoteError": "活動可能已儲存，但收盤價未能儲存。請檢查價格並重試，不要強制匯入重複項。"
+    },
+    "kraken": {
+      "title": "Kraken Spot",
+      "description": "Import Kraken Spot ledger and trade exports in their original currencies. Crypto withdrawals are linked to the wallet account you select.",
+      "files": "Kraken CSV exports (ledger and trades)",
+      "walletAccount": "Wallet destination account",
+      "walletHelp": "A wallet account is only required when the statement includes crypto withdrawals. Both transfer entries will be imported.",
+      "reading": "Reading and reconciling Kraken exports…",
+      "error": "The Kraken exports could not be reconciled. No activities were prepared. Check both files and the diagnostic code.",
+      "prepared": "{{purchases}} purchases and {{total}} activities prepared. Opening and closing balances by ledger asset:",
+      "walletPlaceholder": "Select a wallet account",
+      "walletEmpty": "For crypto withdrawals, create an active investment account with transaction tracking for your wallet."
     }
   },
   "validation": {
@@ -1581,5 +1593,6 @@
     "difference": "差額（結算 − 計算）",
     "reason": "原因未確定。此差額不另記為費用。",
     "link": "相關討論（Rankia）"
-  }
+  },
+  "subtype_fee_in_kind": "Fee paid in asset"
 }

@@ -61,6 +61,7 @@ pub struct ActivityEconomicsResolver;
 #[derive(Clone, Copy, Debug)]
 pub struct ActivityCashInputs<'a> {
     pub activity_type: &'a str,
+    pub subtype: Option<&'a str>,
     /// Activity currency; scales currency-relative tolerances (minor units).
     pub currency: &'a str,
     pub is_security_transfer: bool,
@@ -87,12 +88,19 @@ pub struct ResolvedActivityCash {
 
 impl ActivityEconomicsResolver {
     pub fn resolve_cash(activity: &Activity, unit_multiplier: Decimal) -> ResolvedActivityCash {
+        if crate::activities::NewActivity::is_fee_in_kind(
+            activity.effective_type(),
+            activity.subtype.as_deref(),
+        ) {
+            return ResolvedActivityCash::default();
+        }
         Self::resolve_cash_inputs(Self::cash_inputs(activity, unit_multiplier))
     }
 
     fn cash_inputs(activity: &Activity, unit_multiplier: Decimal) -> ActivityCashInputs<'_> {
         ActivityCashInputs {
             activity_type: activity.effective_type(),
+            subtype: activity.subtype.as_deref(),
             currency: &activity.currency,
             is_security_transfer: Self::is_security_transfer(activity),
             quantity: activity.quantity,
@@ -111,6 +119,12 @@ impl ActivityEconomicsResolver {
         unit_multiplier: Decimal,
         is_credit_card_account: bool,
     ) -> ResolvedActivityCash {
+        if crate::activities::NewActivity::is_fee_in_kind(
+            activity.effective_type(),
+            activity.subtype.as_deref(),
+        ) {
+            return ResolvedActivityCash::default();
+        }
         Self::resolve_cash_inputs_with_account_context(
             Self::cash_inputs(activity, unit_multiplier),
             is_credit_card_account,
@@ -184,6 +198,9 @@ impl ActivityEconomicsResolver {
     /// a missing stored value. Derivation is restricted to proving direction
     /// for exceptional charges-over-proceeds cases.
     pub fn resolve_cash_inputs(inputs: ActivityCashInputs<'_>) -> ResolvedActivityCash {
+        if crate::activities::NewActivity::is_fee_in_kind(inputs.activity_type, inputs.subtype) {
+            return ResolvedActivityCash::default();
+        }
         if inputs.activity_type == ACTIVITY_TYPE_SPLIT {
             return ResolvedActivityCash::default();
         }
@@ -410,6 +427,7 @@ mod cash_tests {
     fn inputs(activity_type: &'static str) -> ActivityCashInputs<'static> {
         ActivityCashInputs {
             activity_type,
+            subtype: None,
             currency: "USD",
             is_security_transfer: false,
             quantity: Some(dec!(2)),

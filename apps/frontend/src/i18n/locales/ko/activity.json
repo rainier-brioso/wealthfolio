@@ -1495,12 +1495,24 @@
     },
     "santander": {
       "title": "산탄데르 연금 (PDF)",
-      "description": "시작 잔액이 0인 전체 내역을 이 연금에만 가져옵니다. PDF와 OCR은 로컬에서 처리하며 은행 계좌에서 출금하지 않습니다.",
+      "description": "분기 명세서를 하나 이상 가져옵니다. 표시된 거래만 가져오며 기초 잔액의 보유 수량은 추가하지 않습니다. PDF와 OCR은 로컬에서 처리하며 은행 계좌에서 출금하지 않습니다.",
       "files": "분기 명세서 (.pdf)",
       "reading": "로컬 읽기: {{progress}}%",
-      "error": "명세서를 확인할 수 없습니다. 준비된 활동이 없습니다. PDF를 확인하고 전체 내역을 가져오세요.",
+      "error": "명세서를 확인할 수 없습니다. 준비된 활동이 없습니다. PDF와 표시된 문제를 확인하세요.",
       "accountError": "모든 활동을 선택한 연금 계좌에 유지하세요.",
       "quoteError": "활동은 저장되었을 수 있으나 종가를 저장하지 못했습니다. 가격을 확인하고 중복을 강제하지 말고 다시 시도하세요."
+    },
+    "kraken": {
+      "title": "Kraken Spot",
+      "description": "Import Kraken Spot ledger and trade exports in their original currencies. Crypto withdrawals are linked to the wallet account you select.",
+      "files": "Kraken CSV exports (ledger and trades)",
+      "walletAccount": "Wallet destination account",
+      "walletHelp": "A wallet account is only required when the statement includes crypto withdrawals. Both transfer entries will be imported.",
+      "reading": "Reading and reconciling Kraken exports…",
+      "error": "The Kraken exports could not be reconciled. No activities were prepared. Check both files and the diagnostic code.",
+      "prepared": "{{purchases}} purchases and {{total}} activities prepared. Opening and closing balances by ledger asset:",
+      "walletPlaceholder": "Select a wallet account",
+      "walletEmpty": "For crypto withdrawals, create an active investment account with transaction tracking for your wallet."
     }
   },
   "validation": {
@@ -1562,5 +1574,6 @@
     "difference": "차액(결제 − 계산)",
     "reason": "원인은 미확정입니다. 이 차액은 별도 비용으로 기록되지 않습니다.",
     "link": "관련 토론(Rankia)"
-  }
+  },
+  "subtype_fee_in_kind": "Fee paid in asset"
 }

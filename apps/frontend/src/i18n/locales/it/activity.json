@@ -1563,12 +1563,24 @@
     },
     "santander": {
       "title": "Pensione Santander (PDF)",
-      "description": "Importa tutta la cronologia da saldo iniziale zero solo in questo piano. PDF e OCR locali. Nessun addebito su conti bancari.",
+      "description": "Importa uno o più estratti trimestrali. Vengono importate solo le operazioni indicate; le quote iniziali non vengono aggiunte. PDF e OCR locali. Nessun addebito su conti bancari.",
       "files": "Estratti trimestrali (.pdf)",
       "reading": "Lettura locale: {{progress}}%",
-      "error": "Impossibile verificare l’estratto. Nessuna attività preparata. Controlla il PDF e importa tutta la cronologia.",
+      "error": "Impossibile verificare l’estratto. Nessuna attività preparata. Controlla il PDF e il problema indicato.",
       "accountError": "Mantieni tutte le attività nel conto del piano selezionato.",
       "quoteError": "Le attività potrebbero essere salvate, ma non il prezzo di chiusura. Controlla i prezzi e riprova senza forzare duplicati."
+    },
+    "kraken": {
+      "title": "Kraken Spot",
+      "description": "Importa i file ledger e trades di Kraken Spot nelle valute originali. I prelievi di criptovalute vengono collegati al conto wallet selezionato.",
+      "files": "File CSV Kraken (ledger e trades)",
+      "walletAccount": "Conto wallet di destinazione",
+      "walletHelp": "Un conto wallet è necessario solo se l’estratto contiene prelievi di criptovalute. Verranno importati entrambi i lati del trasferimento.",
+      "reading": "Lettura e riconciliazione degli export Kraken…",
+      "error": "Impossibile riconciliare gli export Kraken. Non è stata preparata alcuna attività. Controlla i file e il codice diagnostico.",
+      "prepared": "{{purchases}} acquisti e {{total}} attività preparate. Saldi iniziali e finali per asset:",
+      "walletPlaceholder": "Seleziona un conto wallet",
+      "walletEmpty": "Per i prelievi di criptovalute, crea un conto di investimento attivo con monitoraggio delle operazioni per il tuo wallet."
     }
   },
   "validation": {
@@ -1630,5 +1642,6 @@
     "difference": "Differenza (regolato − calcolato)",
     "reason": "Causa non determinata. Questa differenza non è registrata come spesa aggiuntiva.",
     "link": "Discussione correlata (Rankia)"
-  }
+  },
+  "subtype_fee_in_kind": "Commissione pagata in asset"
 }

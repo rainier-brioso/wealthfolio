@@ -173,10 +173,11 @@ impl ActivityKind {
     }
 }
 
-/// The 14 canonical subtypes (broker aliases collapse onto these).
+/// The canonical subtypes (broker aliases collapse onto these).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Subtype {
+    FeeInKind,
     Drip,
     StakingReward,
     DividendInKind,
