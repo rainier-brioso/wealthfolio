@@ -1,3 +1,4 @@
+import { isCalculatedMapping, readMappedValue, fixedActivityType } from "./mapping-values";
 import englishActivity from "@/i18n/locales/en/activity.json";
 import type { LocalDraftErrorMessages } from "./draft-validation-messages";
 import {
@@ -53,7 +54,7 @@ export function primaryHeader(value: string | string[] | undefined): string | un
 export function isFieldMapped(value: string | string[] | undefined, headers: string[]): boolean {
   if (!value) return false;
   if (Array.isArray(value)) return value.some((h) => headers.includes(h));
-  return headers.includes(value);
+  return headers.includes(value) || isCalculatedMapping(value);
 }
 
 export function mergeIssueMaps(
@@ -627,6 +628,19 @@ export function validateDraft(
 
   // FEE validation - either fee or amount required
   if (activityType === ActivityType.FEE) {
+    if (subtype === ACTIVITY_SUBTYPES.FEE_IN_KIND) {
+      if (!draft.symbol) {
+        errors.symbol = [
+          localMessage("activity:validation.symbol_is_required_for_trade_activities"),
+        ];
+      }
+      if (!hasPositiveValue(draft.quantity)) {
+        errors.quantity = [localMessage("activity:validation.quantity_must_be_greater_than_0")];
+      }
+      if (!hasPositiveValue(draft.amount)) {
+        errors.amount = [localMessage("activity:validation.fee_or_amount")];
+      }
+    }
     const hasFee = hasPositiveValue(draft.fee);
     const hasAmount = hasPositiveValue(draft.amount);
     if (!hasFee && !hasAmount) {
@@ -735,32 +749,13 @@ export function createDraftActivities(
   const skippedRows = new Set(options?.skippedRowIndexes);
   const { dateFormat, decimalSeparator, thousandsSeparator, defaultCurrency } = parseConfig;
 
-  // Create header index lookup
-  const headerIndex: Record<string, number> = {};
-  headers.forEach((header, idx) => {
-    headerIndex[header] = idx;
-  });
-
-  // Get column value — supports fallback columns when mapping is an array
-  const getColumnValue = (row: string[], field: ImportFormat): string | undefined => {
-    const csvHeader = fieldMappings[field];
-    if (!csvHeader) return undefined;
-
-    if (Array.isArray(csvHeader)) {
-      for (const h of csvHeader) {
-        const idx = headerIndex[h];
-        if (idx !== undefined) {
-          const val = row[idx]?.trim();
-          if (val) return val;
-        }
-      }
-      return undefined;
-    }
-
-    const idx = headerIndex[csvHeader];
-    if (idx === undefined) return undefined;
-    return row[idx];
-  };
+  const getColumnValue = (row: string[], field: ImportFormat): string | undefined =>
+    readMappedValue(
+      Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ""])),
+      field,
+      fieldMappings,
+      parseConfig,
+    ) || undefined;
 
   // Numeric dates are ambiguous per row but usually not per column: one
   // "26/06/2026" among them fixes the day/month order for every other row.
@@ -779,7 +774,9 @@ export function createDraftActivities(
     const rawType = getColumnValue(row, ImportFormat.ACTIVITY_TYPE);
 
     // Skip rows mapped to SKIP
-    const preCheckType = mapActivityType(rawType, activityMappings);
+    const preCheckType =
+      fixedActivityType(fieldMappings[ImportFormat.ACTIVITY_TYPE]) ??
+      mapActivityType(rawType, activityMappings);
     if (preCheckType === ACTIVITY_SKIP) return [];
     const ignoresAssetFields =
       options?.importProfile && isTransactionImportProfile(options.importProfile);
@@ -809,7 +806,9 @@ export function createDraftActivities(
       decimalSeparator,
       thousandsSeparator,
     );
-    const mappedActivityType = mapActivityType(rawType, activityMappings);
+    const mappedActivityType =
+      fixedActivityType(fieldMappings[ImportFormat.ACTIVITY_TYPE]) ??
+      mapActivityType(rawType, activityMappings);
     const signedTradeType = inferSignedTradeType(rawType, rawSubtype, signedQuantity, signedAmount);
     const rawTypePositionIntentType = inferTradeTypeFromPositionIntentSubtype(rawType);
     const signedFxTransferType = inferSignedFxTransferType(rawType, signedAmount);
@@ -844,7 +843,8 @@ export function createDraftActivities(
     // Parse typed symbol prefixes (e.g., "bond:US037833DU14")
     const { symbol: prefixParsedSymbol, instrumentType: prefixInstrumentType } =
       splitInstrumentPrefixedSymbol(mappedSymbol);
-    const symbol = prefixParsedSymbol;
+    // An ISIN-only export still needs an identifier in the existing asset resolver.
+    const symbol = prefixParsedSymbol || rawIsin?.trim().toUpperCase() || undefined;
 
     // Normalize instrument type: explicit CSV column > prefix > symbol mapping meta
     const normalizedCsvInstrumentType = normalizeInstrumentType(rawInstrumentType);
@@ -1003,6 +1003,7 @@ export function draftToActivityImport(draft: DraftActivity): ActivityImport {
     activityType: draft.activityType as ActivityImport["activityType"],
     date: draft.activityDate,
     symbol: draft.symbol ?? "",
+    isin: draft.isin,
     symbolName: draft.symbolName,
     amount: draft.amount,
     quantity: draft.quantity,
@@ -1025,6 +1026,7 @@ export function draftToActivityImport(draft: DraftActivity): ActivityImport {
     lineNumber: draft.rowIndex + 1,
     isDraft: false,
     comment: draft.comment,
+    sourceReconciliation: draft.sourceReconciliation,
     forceImport: draft.forceImport ?? false,
     isExternal: isTransfer || isCredit ? draft.isExternal : undefined,
   };

@@ -303,5 +303,29 @@
       "replace": "Sostituzione dei dati su questo dispositivo",
       "backup": "Backup di questo profilo"
     }
+  },
+  "lan": {
+    "title": "Sincronizzazione Wi-Fi",
+    "description": "Sincronizza questo computer e un dispositivo mobile sulla rete locale.",
+    "nativeOnly": "Usa l’app nativa per computer o dispositivi mobili.",
+    "status": "Stato della connessione",
+    "join": "Connetti al computer",
+    "host": "Condividi dal computer",
+    "instructions": "Tieni il computer aperto e sbloccato. Le modifiche si sincronizzano in entrambe le direzioni mentre l’app mobile è visibile.",
+    "paired": "Dispositivo associato",
+    "waiting": "In attesa del dispositivo mobile",
+    "pending": "Importazione iniziale in sospeso. Riprova quando il computer è disponibile.",
+    "stopped": "Il server locale è fermo. Riavvialo qui sotto.",
+    "lastSync": "Ultima sincronizzazione:",
+    "address": "Indirizzo e porta del computer",
+    "start": "Avvia / mostra invito",
+    "privateCode": "Questo codice dà accesso al tuo patrimonio. Condividilo solo con un tuo dispositivo.",
+    "invitation": "Invito privato",
+    "emptyProfile": "Connettiti da un profilo vuoto. La prima importazione copia il portafoglio del computer. I dati mobili esistenti sono protetti.",
+    "scan": "Scansiona QR",
+    "saveAddress": "Salva indirizzo",
+    "syncNow": "Sincronizza ora",
+    "disconnect": "Disconnetti",
+    "working": "Connessione e sincronizzazione…"
   }
 }

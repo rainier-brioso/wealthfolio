@@ -540,6 +540,7 @@
     "default": "默认",
     "apiKeyRequired": "需要 API 密钥",
     "apiKey": "API 密钥",
+    "apiKeyOptional": "API 密钥（可选）",
     "getApiKey": "获取 API 密钥",
     "enterApiKey": "输入 API 密钥",
     "hideApiKey": "隐藏 API 密钥",

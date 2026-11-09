@@ -192,6 +192,7 @@ export function buildImportAssetCandidateFromDraft(
 export function buildNewAssetFromSearchResult(
   result: SymbolSearchResult,
   fallbackCurrency: string,
+  isin?: string,
 ): NewAsset {
   const instrumentType = mapQuoteTypeToInstrumentType(result.quoteType);
   const kind = instrumentType === "FX" ? "FX" : "INVESTMENT";
@@ -211,6 +212,7 @@ export function buildNewAssetFromSearchResult(
     instrumentExchangeMic: canonicalExchangeMic,
     providerId: result.providerId,
     providerSymbol: result.providerSymbol,
+    ...(isin?.trim() ? { metadata: { identifiers: { isin: isin.trim().toUpperCase() } } } : {}),
   };
 }
 
@@ -234,6 +236,9 @@ export function buildNewAssetFromDraft(draft: DraftActivity): NewAsset | null {
     instrumentExchangeMic: draft.exchangeMic,
     providerId: draft.providerId,
     providerSymbol: draft.providerSymbol,
+    ...(draft.isin?.trim()
+      ? { metadata: { identifiers: { isin: draft.isin.trim().toUpperCase() } } }
+      : {}),
   };
 }
 

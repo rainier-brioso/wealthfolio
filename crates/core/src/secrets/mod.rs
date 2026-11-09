@@ -15,6 +15,8 @@ pub const CLOUD_BACKUP_PENDING_MASTER_PREFIX: &str = "cloud_backup_pending_maste
 pub const CLOUD_BACKUP_SOURCE_ID_PREFIX: &str = "cloud_backup_source_v1:";
 
 pub const SYNC_IDENTITY_KEY: &str = "sync_identity";
+/// Private configuration for the opt-in, one-to-one LAN transport.
+pub const LAN_SYNC_CONFIG_KEY: &str = "lan_sync_config_v1";
 
 /// Retired device ID entry; used only to clean up older installations.
 pub const LEGACY_SYNC_DEVICE_ID_KEY: &str = "sync_device_id";
@@ -109,6 +111,7 @@ pub fn validate_unscoped_secret_service_id(service: &str) -> std::result::Result
             CLOUD_REFRESH_TOKEN_KEY,
             CLOUD_ACCESS_TOKEN_KEY,
             SYNC_IDENTITY_KEY,
+            LAN_SYNC_CONFIG_KEY,
             CLOUD_BACKUP_CONSENT_KEY,
             LEGACY_SYNC_DEVICE_ID_KEY,
         ]

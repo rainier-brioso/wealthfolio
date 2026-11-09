@@ -558,6 +558,7 @@
     "default": "預設",
     "apiKeyRequired": "需要 API 金鑰",
     "apiKey": "API 金鑰",
+    "apiKeyOptional": "API 金鑰（選填）",
     "getApiKey": "取得 API 金鑰",
     "enterApiKey": "輸入 API 金鑰",
     "hideApiKey": "隱藏 API 金鑰",

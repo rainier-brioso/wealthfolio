@@ -327,7 +327,8 @@
   "operations": {
     "more_details": "자세히 보기",
     "unlink_transfer": "이체 연결 해제",
-    "link_transfer": "이체 연결..."
+    "link_transfer": "이체 연결...",
+    "convert_to_transfer": "이체로 변환..."
   },
   "date_sheet": {
     "title": "{{date}}의 활동",
@@ -463,7 +464,17 @@
     "error_load_suggestions": "제안된 일치 항목을 불러올 수 없습니다.",
     "error_load_pair": "연결된 이체 쌍을 불러올 수 없습니다.",
     "error_search": "활동을 검색할 수 없습니다.",
-    "within_days_other": "{{count}}일 이내"
+    "within_days_other": "{{count}}일 이내",
+    "convert_title": "이체로 변환",
+    "convert_desc": "이 활동을 계좌 간 이체로 변환합니다. 다른 계좌에서 일치하는 활동을 선택하거나 그곳에 새로 만드세요.",
+    "convert_no_matches": "7일 이내에 일치하는 활동이 없습니다.",
+    "convert_new": "다른 계좌에 생성",
+    "convert_removes_split": "이체로 변환하면 분할이 삭제됩니다.",
+    "convert_account": "다른 계좌",
+    "convert_amount": "{{currency}} 금액",
+    "convert_button": "이체로 변환",
+    "convert_success": "이체로 변환했습니다",
+    "convert_error": "이체로 변환하지 못했습니다"
   },
   "form": {
     "section_conversion": "펀드 전환",
@@ -970,7 +981,10 @@
       "allRowsSkippedDescription": "계속하려면 하나 이상의 행을 포함하세요.",
       "includeRow": "{{line}}행 포함",
       "includeAllRows": "모든 행 포함",
-      "includeMatchingRows": "일치하는 모든 행 포함"
+      "includeMatchingRows": "일치하는 모든 행 포함",
+      "fixedType": "Fixed value: {{type}}",
+      "calculatedUnitPrice": "Calculate: amount / quantity",
+      "calculatedUnitPriceHelp": "Price is calculated from the CSV amount and quantity. An estimated amount gives an estimated price. Review fees, taxes and cancelled rows before confirming. A fixed activity type applies to all included rows."
     },
     "csvViewer": {
       "status": "상태",
@@ -1357,6 +1371,148 @@
       "transfer": "잔액 이체 / 현금서비스",
       "refund": "환불 / 입금",
       "interest": "이자 청구"
+    },
+    "myInvestor": {
+      "title": "MyInvestor: 현금 및 펀드 매수",
+      "description": "완료된 각 매수를 실제 은행 출금과 연결하세요. 내부 이체를 통해 두 계좌를 함께 가져옵니다. 취소된 주문은 제외됩니다.",
+      "cashAccount": "현금 계좌(EUR)",
+      "companionOrders": "펀드 매수 주문 CSV",
+      "companionCash": "현금 거래 CSV",
+      "invalidFiles": "CSV, 계좌 및 연결을 확인하세요. 완료된 각 주문에는 동일 통화의 별도 출금이 필요합니다.",
+      "ordersCount": "연결할 주문: {{total}}",
+      "matchPurchase": "이 매수의 은행 출금",
+      "chooseDebit": "은행 출금 선택",
+      "prepare": "통합 가져오기 준비",
+      "reviewCash": "은행 출금에 따라 매수 날짜와 금액이 결정됩니다. 다른 현금 거래는 매핑 단계에서 분류해야 합니다. 기초 잔액은 추가되지 않습니다."
+    },
+    "inversis": {
+      "title": "MyInvestor / Inversis",
+      "description": "Load the Inversis movements and securities operations exports together. Review the prepared activities before importing.",
+      "files": "Inversis exports (.xls)",
+      "fileCount": "{{total}} files selected",
+      "cashAccount": "Cash account",
+      "singleAccount": "Cash and investments in {{account}}",
+      "cashAccountHelp": "Use the investment account for cash, or select a separate cash account. Matched purchases then include internal transfers.",
+      "invalidFiles": "Could not read these Inversis exports. Check the file format and reported issues.",
+      "reading": "Reading files…",
+      "prepare": "Prepare activities",
+      "preview": "Prepared import",
+      "activitiesCount": "{{total}} activities prepared",
+      "controls": "Statement balance checks",
+      "diagnostics": "Issues to review",
+      "opening": "Opening balance",
+      "closing": "Closing balance",
+      "useActivities": "Use these activities",
+      "modeCsv": "CSV",
+      "modeInversis": "MyInvestor / Inversis",
+      "matchSecurity": "Match security operation to cash movement",
+      "chooseMatch": "Select the cash movement",
+      "noActivities": "No activities prepared.",
+      "modeLabel": "Import format",
+      "csvMode": "CSV",
+      "mode": "MyInvestor / Inversis",
+      "errors": {
+        "invalid-control-balance": "Invalid statement balance.",
+        "incomplete-control-balances": "Opening or closing statement balance is missing.",
+        "cash-balance-mismatch": "Statement movements do not reconcile to the closing balance.",
+        "unrecognized-html-export": "Unrecognized Inversis export.",
+        "missing-cash-rows": "Add the cash movements export.",
+        "missing-security-rows": "Add the securities operations export.",
+        "unsupported-security-operation": "This security operation is not supported.",
+        "invalid-security-row": "Invalid security operation row.",
+        "invalid-cash-row": "Invalid cash movement row.",
+        "missing-funds-account": "Select the investment account.",
+        "same-cash-funds-account": "Cash and securities use the same account.",
+        "invalid-row-match": "The selected cash movement does not fit this operation.",
+        "cash-row-matched-more-than-once": "A cash movement has been assigned to more than one operation.",
+        "unsupported-currency-match": "This currency combination is not supported.",
+        "unmatched-security-operation": "Select the cash movement for this security operation.",
+        "security-match-required": "Confirm the cash movement for this operation.",
+        "bank-amount-differs-from-security-net": "The cash charge differs from the security net amount. The cash charge determines settlement; the source price is preserved.",
+        "unsupported-cash-operation": "This cash operation is not supported.",
+        "zero-opening-movement-skipped": "The zero-value opening marker was excluded from activities.",
+        "nonzero-opening-movement": "The opening movement has a nonzero amount and requires review.",
+        "legacy-transfer-conflict": "Existing transfers match the previous import format. Review them before continuing to avoid duplicates.",
+        "legacy-check-failed": "Previous transfers could not be checked. Preparation is blocked until this check succeeds.",
+        "prepared-cash-mismatch": "The prepared cash effects do not reconcile to the source movements.",
+        "partial-operation-group": "A trade and its transfers are partly duplicated or excluded. Review the trade and its transfers together before importing.",
+        "trade-total-review": "{{isin}}: 수량 {{quantity}} × 가격 {{price}}이 순금액 {{amount}} {{currency}}와 다릅니다(차이: {{difference}}). 원본 값을 유지하며 가져온 후 검토가 필요합니다."
+      },
+      "proposedMatch": "추천 연결: 금액과 통화를 확인하세요",
+      "confirmProposal": "연결 확인",
+      "automaticMatch": "자동 연결됨",
+      "securityDates": "Trade: {{tradeDate}} · Settlement: {{settlementDate}}",
+      "cashDates": "Operation: {{operationDate}} · Value: {{valueDate}}",
+      "sourceRow": "{{file}} · Row {{row}}",
+      "evidence": {
+        "date": {
+          "settlementValue": "Settlement date matches cash value date",
+          "tradeOperation": "Trade date matches cash operation date (fallback)",
+          "other": "No corresponding date match",
+          "settlement-value": "Settlement date matches cash value date",
+          "trade-operation": "Trade date matches cash operation date (fallback)"
+        },
+        "name": {
+          "exact": "Instrument name matches",
+          "similar": "Similar instrument name — review required",
+          "different": "Instrument names differ"
+        },
+        "amountDifference": "Cash minus securities amount: {{amount}}",
+        "fxRate": "Settlement exchange rate: 1 {{fromCurrency}} = {{rate}} {{toCurrency}}"
+      },
+      "settlementChecks": "Prepared cash checks",
+      "settlementExpected": "Source change",
+      "settlementActual": "Prepared change",
+      "settlementBalanced": "Balanced",
+      "settlementMismatch": "Mismatch",
+      "balanced": "Balanced",
+      "unbalanced": "Mismatch",
+      "matchStatus": {
+        "unmatched": "선택 필요",
+        "confirmation": "확인 필요",
+        "matched": "연결됨"
+      },
+      "attentionOrder": "주의가 필요한 항목이 먼저 표시됩니다.",
+      "aiModel": "AI 모델",
+      "aiNoModel": "설정 → AI 제공업체에서 모델을 구성하고 활성화하세요.",
+      "aiPrivacy": "분석 시 파일의 데이터를 {{provider}}({{model}})에 보냅니다. 유효한 제안은 검토를 위해 선택되며 변경할 수 있습니다.",
+      "aiNeedsTools": "AI 설정에서 이 모델의 Tools를 활성화하세요.",
+      "aiAnalyzing": "분석 중…",
+      "aiAnalyze": "AI로 분석",
+      "aiResult": "제안: {{accepted}} · 제외: {{rejected}} · 미해결: {{abstained}}. 활동을 준비하기 전에 선택된 연결을 검토하세요.",
+      "aiFailed": "AI 분석이 실패했거나 잘못된 응답을 반환했습니다. 선택 내용은 유지되었습니다.",
+      "aiProposal": "AI 제안",
+      "aiTimeout": "분석 제한 시간을 초과했습니다. 선택 사항은 유지되었습니다.",
+      "aiInvalidResponse": "모델이 불완전하거나 잘못된 제안을 반환했습니다. 선택 사항은 유지되었습니다.",
+      "aiProviderFailure": "공급자 요청에 실패했습니다. 모델과 서버를 확인하세요. 선택 사항은 유지되었습니다.",
+      "securityOperation": "증권 거래",
+      "suggestedCashMovement": "제안된 현금 거래",
+      "cashMovement": "현금 거래",
+      "changeMovement": "거래 변경",
+      "amountDifferenceShort": "차액: {{amount}}",
+      "ruleProposal": "규칙 제안",
+      "selectionHelp": "제안은 이미 선택되어 있습니다. 활동을 준비하기 전에 연결을 변경하거나 해제할 수 있습니다. 최종 가져오기 전에는 저장되지 않습니다."
+    },
+    "santander": {
+      "title": "산탄데르 연금 (PDF)",
+      "description": "분기 명세서를 하나 이상 가져옵니다. 표시된 거래만 가져오며 기초 잔액의 보유 수량은 추가하지 않습니다. PDF와 OCR은 로컬에서 처리하며 은행 계좌에서 출금하지 않습니다.",
+      "files": "분기 명세서 (.pdf)",
+      "reading": "로컬 읽기: {{progress}}%",
+      "error": "명세서를 확인할 수 없습니다. 준비된 활동이 없습니다. PDF와 표시된 문제를 확인하세요.",
+      "accountError": "모든 활동을 선택한 연금 계좌에 유지하세요.",
+      "quoteError": "활동은 저장되었을 수 있으나 종가를 저장하지 못했습니다. 가격을 확인하고 중복을 강제하지 말고 다시 시도하세요."
+    },
+    "kraken": {
+      "title": "Kraken Spot",
+      "description": "Import Kraken Spot ledger and trade exports in their original currencies. Crypto withdrawals are linked to the wallet account you select.",
+      "files": "Kraken CSV exports (ledger and trades)",
+      "walletAccount": "Wallet destination account",
+      "walletHelp": "A wallet account is only required when the statement includes crypto withdrawals. Both transfer entries will be imported.",
+      "reading": "Reading and reconciling Kraken exports…",
+      "error": "The Kraken exports could not be reconciled. No activities were prepared. Check both files and the diagnostic code.",
+      "prepared": "{{purchases}} purchases and {{total}} activities prepared. Opening and closing balances by ledger asset:",
+      "walletPlaceholder": "Select a wallet account",
+      "walletEmpty": "For crypto withdrawals, create an active investment account with transaction tracking for your wallet."
     }
   },
   "validation": {
@@ -1402,5 +1558,22 @@
     "external": "외부 이체",
     "direction": "이체 방향",
     "mode": "이체 모드"
-  }
+  },
+  "sourceReconciliation": {
+    "title": "MyInvestor/Inversis 결제 차액",
+    "description": "가져온 원본 데이터입니다. 이후 수정해도 이 값은 바뀌지 않습니다.",
+    "reviewed": "검토 완료",
+    "tradeDate": "거래일",
+    "settlementDate": "결제일",
+    "reference": "거래 참조",
+    "quantity": "원래 수량",
+    "unitPrice": "원래 단가",
+    "sourceAmount": "파일의 순금액",
+    "settledAmount": "결제 금액",
+    "calculatedAmount": "수량 × 가격",
+    "difference": "차액(결제 − 계산)",
+    "reason": "원인은 미확정입니다. 이 차액은 별도 비용으로 기록되지 않습니다.",
+    "link": "관련 토론(Rankia)"
+  },
+  "subtype_fee_in_kind": "Fee paid in asset"
 }

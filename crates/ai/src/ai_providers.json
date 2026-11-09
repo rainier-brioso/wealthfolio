@@ -53,6 +53,40 @@
         }
       }
     },
+    "custom": {
+      "name": "Custom (OpenAI-compatible)",
+      "type": "local",
+      "icon": "Bot",
+      "description": "Connect Strata and other OpenAI-compatible servers",
+      "envKey": "",
+      "defaultConfig": {
+        "enabled": false,
+        "priority": 15
+      },
+      "connectionFields": [
+        {
+          "key": "baseUrl",
+          "label": "Custom Endpoint",
+          "type": "text",
+          "placeholder": "http://127.0.0.1:8080/v1",
+          "required": true
+        },
+        {
+          "key": "apiKey",
+          "label": "API Key",
+          "type": "password",
+          "placeholder": "Optional",
+          "required": false
+        }
+      ],
+      "models": {},
+      "defaultModel": "",
+      "documentationUrl": "",
+      "tuning": {
+        "temperature": 0.2,
+        "maxTokens": 16384
+      }
+    },
     "groq": {
       "name": "Groq",
       "type": "api",

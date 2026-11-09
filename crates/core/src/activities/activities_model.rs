@@ -431,6 +431,16 @@ pub struct NewActivity {
 }
 
 impl NewActivity {
+    pub fn is_fee_in_kind(activity_type: &str, subtype: Option<&str>) -> bool {
+        activity_type.eq_ignore_ascii_case(ACTIVITY_TYPE_FEE)
+            && subtype.is_some_and(|value| {
+                value
+                    .trim()
+                    .replace([' ', '-'], "_")
+                    .eq_ignore_ascii_case(crate::activities::ACTIVITY_SUBTYPE_FEE_IN_KIND)
+            })
+    }
+
     pub fn canonicalize_subtype(subtype: Option<&str>) -> Option<String> {
         let subtype = subtype.map(str::trim).filter(|value| !value.is_empty())?;
 
@@ -585,6 +595,23 @@ impl NewActivity {
         }
 
         validate_activity_date(&self.activity_date)?;
+
+        if Self::is_fee_in_kind(&self.activity_type, self.subtype.as_deref())
+            && (self
+                .quantity
+                .is_none_or(|quantity| quantity <= Decimal::ZERO)
+                || self.amount.is_none_or(|amount| amount <= Decimal::ZERO)
+                || ![self.get_asset_resolution_id(), self.get_asset_symbol()]
+                    .into_iter()
+                    .flatten()
+                    .any(|value| !value.trim().is_empty())
+                || self.fee.is_some_and(|fee| !fee.is_zero())
+                || self.tax.is_some_and(|tax| !tax.is_zero()))
+        {
+            return Err(ActivityError::InvalidData(
+                "Fees in kind require an asset and positive units, without cash charges".into(),
+            ));
+        }
 
         let subtype =
             Self::canonicalize_subtype_for_activity(&self.activity_type, self.subtype.as_deref());
@@ -948,6 +975,29 @@ pub struct TransferMatchCandidateRequest {
     pub limit: Option<usize>,
 }
 
+/// Turns a cash deposit or withdrawal (or an unlinked cash transfer) into one
+/// leg of an internal transfer. The other leg is either an existing activity in
+/// another account (`counterpart_activity_id`) or a new one created in
+/// `counterpart_account_id`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConvertToTransferRequest {
+    pub activity_id: String,
+    #[serde(default)]
+    pub counterpart_activity_id: Option<String>,
+    #[serde(default)]
+    pub counterpart_account_id: Option<String>,
+    /// Amount for a new leg whose account currency differs from the source's.
+    #[serde(
+        default,
+        deserialize_with = "decimal_input_format::deserialize_option_decimal"
+    )]
+    pub counterpart_amount: Option<Decimal>,
+    /// Native review of the rows the conversion retypes; validated by the shared writer.
+    #[serde(default)]
+    pub split_review: Option<Vec<ActivitySplitEffect>>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TransferMatchCandidate {
@@ -1170,6 +1220,12 @@ pub struct ActivitySearchResponse {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ActivityImport {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "super::source_reconciliation::deserialize_optional"
+    )]
+    pub source_reconciliation: Option<super::source_reconciliation::SourceReconciliation>,
     pub id: Option<String>,
     pub date: String,
     pub symbol: String,
@@ -2184,6 +2240,17 @@ impl From<ActivityImport> for NewActivity {
                 Some(serde_json::json!({ "flow": { "is_external": true } }).to_string())
             }
             _ => None,
+        };
+
+        let metadata = if let Some(snapshot) = import.source_reconciliation {
+            let mut value = metadata
+                .as_deref()
+                .and_then(|text| serde_json::from_str::<serde_json::Value>(text).ok())
+                .unwrap_or_else(|| serde_json::json!({}));
+            value[super::source_reconciliation::METADATA_KEY] = serde_json::json!(snapshot);
+            Some(value.to_string())
+        } else {
+            metadata
         };
 
         NewActivity {

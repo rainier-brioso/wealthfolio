@@ -1,3 +1,4 @@
+import { importFieldMapped } from "../utils/mapping-values";
 import {
   Table,
   TableBody,
@@ -83,12 +84,8 @@ export function MappingTable({
 }: MappingTableProps) {
   const { t } = useTranslation();
   // Check if a field is mapped (supports fallback column arrays)
-  const checkFieldMapped = (field: ImportFormat) => {
-    const mappedHeader = mapping.fieldMappings[field];
-    if (!mappedHeader) return false;
-    if (Array.isArray(mappedHeader)) return mappedHeader.some((h) => headers.includes(h));
-    return headers.includes(mappedHeader);
-  };
+  const checkFieldMapped = (field: ImportFormat) =>
+    importFieldMapped(field, mapping.fieldMappings, headers);
 
   return (
     <Card
@@ -139,6 +136,7 @@ export function MappingTable({
                       mapping={mapping}
                       headers={headers}
                       requiredFields={requiredFields}
+                      allowedActivityTypes={allowedActivityTypes}
                       handleColumnMapping={handleColumnMapping}
                     />
                   </TableHead>

@@ -6,5 +6,7 @@ const TIMEOUTS_MS: Record<string, number> = {
   complete_pairing_with_transfer: 30 * 60_000,
   preview_import_assets: 600_000,
   check_activities_import: 600_000,
+  // Local AI matching has a ten-minute backend deadline; leave time for IPC/HTTP.
+  suggest_import_matches: 11 * 60_000,
 };
 export const invokeTimeoutMs = (command: string): number => TIMEOUTS_MS[command] ?? 300_000;

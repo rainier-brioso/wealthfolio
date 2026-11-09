@@ -27,6 +27,7 @@ use super::TauriAiEnvironment;
 use crate::services::ConnectService;
 
 pub struct ServiceContext {
+    pub lan_sync: crate::commands::lan_sync::LanRuntime,
     pub portfolio_tasks: crate::listeners::PortfolioTasks,
     #[cfg(feature = "device-sync")]
     pub sync_approvals: crate::commands::device_sync::SyncApprovals,

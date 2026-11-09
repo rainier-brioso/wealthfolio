@@ -5,6 +5,8 @@ pub(crate) mod tests {
     use crate::activities::{
         ActivityRepositoryTrait, ActivityService, ActivityServiceTrait, ImportRun,
         ImportRunRepositoryTrait, ImportRunStatus, TransferLinkState, ACTIVITY_TYPE_ADJUSTMENT,
+        ACTIVITY_TYPE_DEPOSIT, ACTIVITY_TYPE_TRANSFER_IN, ACTIVITY_TYPE_TRANSFER_OUT,
+        ACTIVITY_TYPE_WITHDRAWAL,
     };
     use crate::assets::{
         normalize_quote_ccy_code, parse_crypto_pair_symbol, parse_symbol_with_exchange_suffix,
@@ -1591,10 +1593,23 @@ pub(crate) mod tests {
 
         async fn link_transfer_activities(
             &self,
-            _activity_a_id: String,
-            _activity_b_id: String,
+            activity_a_id: String,
+            activity_b_id: String,
         ) -> Result<(Activity, Activity)> {
-            unimplemented!()
+            let mut activities = self.activities.lock().unwrap();
+            let mut linked = Vec::new();
+            for activity in activities
+                .iter_mut()
+                .filter(|activity| activity.id == activity_a_id || activity.id == activity_b_id)
+            {
+                activity.source_group_id = Some(format!("link-{activity_a_id}-{activity_b_id}"));
+                linked.push(activity.clone());
+            }
+            linked.sort_by_key(|activity| activity.effective_type() != ACTIVITY_TYPE_TRANSFER_IN);
+            match <[Activity; 2]>::try_from(linked) {
+                Ok([transfer_in, transfer_out]) => Ok((transfer_in, transfer_out)),
+                Err(_) => Err(Error::Unexpected("both activities must exist".to_string())),
+            }
         }
 
         async fn unlink_transfer_activities(
@@ -1652,6 +1667,37 @@ pub(crate) mod tests {
             Ok((transfer_in, transfer_out))
         }
 
+        async fn mutate_and_link_transfer(
+            &self,
+            creates: Vec<NewActivity>,
+            updates: Vec<ActivityUpdate>,
+            activity_id: String,
+            counterpart_id: Option<String>,
+        ) -> Result<(Activity, Activity)> {
+            // Restore the snapshot on failure, like the SQLite transaction.
+            let snapshot = self.activities.lock().unwrap().clone();
+            let result = async {
+                let persisted = self
+                    .bulk_mutate_activities(creates, updates, Vec::new())
+                    .await?;
+                let counterpart_id = counterpart_id
+                    .or_else(|| {
+                        persisted
+                            .created
+                            .first()
+                            .map(|activity| activity.id.clone())
+                    })
+                    .ok_or_else(|| Error::Unexpected("New transfer leg was not returned".into()))?;
+                self.link_transfer_activities(activity_id, counterpart_id)
+                    .await
+            }
+            .await;
+            if result.is_err() {
+                *self.activities.lock().unwrap() = snapshot;
+            }
+            result
+        }
+
         async fn bulk_mutate_activities(
             &self,
             creates: Vec<NewActivity>,
@@ -1707,7 +1753,7 @@ pub(crate) mod tests {
                     activity_type: new_activity.activity_type,
                     activity_type_override: None,
                     source_type: None,
-                    subtype: None,
+                    subtype: new_activity.subtype,
                     status: new_activity
                         .status
                         .unwrap_or(crate::activities::ActivityStatus::Posted),
@@ -2745,6 +2791,59 @@ pub(crate) mod tests {
             Some("1000"),
             "existing breadcrumb must survive the patch"
         );
+    }
+
+    #[tokio::test]
+    async fn source_reconciliation_survives_approval_and_later_edits() {
+        let accounts = Arc::new(MockAccountService::new());
+        accounts.add_account(create_test_account("acc-eur", "EUR"));
+        let assets = Arc::new(MockAssetService::new());
+        assets.add_asset(create_test_asset_with_instrument(
+            "fund",
+            "FUND",
+            Some("XFRA"),
+            Some(InstrumentType::Equity),
+            "EUR",
+        ));
+        let repository = Arc::new(MockActivityRepository::new());
+        let snapshot = crate::activities::source_reconciliation::tests::fixture();
+        let mut existing = create_stored_activity("buy-original", "acc-eur", Some("fund"));
+        existing.quantity = Some(dec!(2));
+        existing.unit_price = Some(dec!(24.99));
+        existing.amount = Some(dec!(50));
+        existing.needs_review = true;
+        existing.metadata = Some(serde_json::json!({ "source_reconciliation": snapshot.clone() }));
+        repository.add_activity(existing);
+        let service = ActivityService::new(
+            repository,
+            accounts,
+            assets,
+            Arc::new(MockFxService::new()),
+            Arc::new(MockQuoteService),
+        );
+        let approve: ActivityUpdate = serde_json::from_value(serde_json::json!({
+            "id": "buy-original", "accountId": "acc-eur", "activityType": "BUY",
+            "activityDate": "2026-01-02", "currency": "EUR", "needsReview": false
+        }))
+        .unwrap();
+        let approved = service.update_activity(approve).await.unwrap();
+        assert!(!approved.needs_review);
+        assert_eq!(
+            approved.metadata.unwrap()["source_reconciliation"],
+            snapshot
+        );
+        let edited: ActivityUpdate = serde_json::from_value(serde_json::json!({
+            "id": "buy-original", "accountId": "acc-eur", "activityType": "BUY",
+            "activityDate": "2026-01-02", "currency": "EUR", "unitPrice": "25",
+            "amount": "50", "needsReview": false,
+            "metadata": "{\"source_reconciliation\":null,\"custom\":true}"
+        }))
+        .unwrap();
+        let edited = service.update_activity(edited).await.unwrap();
+        assert_eq!(edited.unit_price, Some(dec!(25)));
+        let metadata = edited.metadata.unwrap();
+        assert_eq!(metadata["source_reconciliation"], snapshot);
+        assert_eq!(metadata["custom"], true);
     }
 
     #[tokio::test]
@@ -4471,6 +4570,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: Some(asset_id.to_string()),
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -5272,6 +5372,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -9316,6 +9417,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -9393,6 +9495,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -9469,6 +9572,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -9536,6 +9640,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -9610,6 +9715,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -9684,6 +9790,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -9768,6 +9875,7 @@ pub(crate) mod tests {
                 subtype: None,
                 asset_id: None,
                 isin: None,
+                source_reconciliation: None,
                 force_import: false,
                 is_external: None,
                 source_group_id: None,
@@ -9869,6 +9977,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -9966,6 +10075,7 @@ pub(crate) mod tests {
                 subtype: None,
                 asset_id: None,
                 isin: Some("ca82509l1076".to_string()),
+                source_reconciliation: None,
                 force_import: false,
                 is_external: None,
                 source_group_id: None,
@@ -10002,6 +10112,7 @@ pub(crate) mod tests {
                 subtype: None,
                 asset_id: None,
                 isin: Some("CA82509L1077".to_string()),
+                source_reconciliation: None,
                 force_import: false,
                 is_external: None,
                 source_group_id: None,
@@ -10086,6 +10197,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -10157,6 +10269,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -10406,6 +10519,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -10481,6 +10595,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -10549,6 +10664,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -10624,6 +10740,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -10696,6 +10813,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -10765,6 +10883,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -10840,6 +10959,7 @@ pub(crate) mod tests {
             provider_symbol: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -10923,6 +11043,7 @@ pub(crate) mod tests {
             provider_symbol: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -10996,6 +11117,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -11065,6 +11187,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -11185,6 +11308,7 @@ pub(crate) mod tests {
             subtype: Some("DRIP".to_string()),
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -11256,6 +11380,7 @@ pub(crate) mod tests {
             subtype: Some("DIVIDEND_IN_KIND".to_string()),
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -11327,6 +11452,7 @@ pub(crate) mod tests {
             subtype: Some("STAKING_REWARD".to_string()),
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -11398,6 +11524,7 @@ pub(crate) mod tests {
             subtype: Some("STAKING_REWARD".to_string()),
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -11466,6 +11593,7 @@ pub(crate) mod tests {
             subtype: Some("BUY_TO_OPEN".to_string()),
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -11535,6 +11663,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -11606,6 +11735,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -11686,6 +11816,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -11761,6 +11892,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -11845,6 +11977,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -11921,6 +12054,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -11993,6 +12127,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -12073,6 +12208,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: Some(true),
             source_group_id: None,
@@ -12110,6 +12246,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: Some(true),
             source_group_id: None,
@@ -12218,6 +12355,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: Some(true),
             source_group_id: None,
@@ -12255,6 +12393,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: Some(true),
             source_group_id: None,
@@ -12342,6 +12481,7 @@ pub(crate) mod tests {
             subtype: Some("FXEXCHANGE".to_string()),
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: Some(false),
             source_group_id: None,
@@ -12379,6 +12519,7 @@ pub(crate) mod tests {
             subtype: Some("FXEXCHANGE".to_string()),
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: Some(false),
             source_group_id: None,
@@ -12502,6 +12643,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: Some(false),
             source_group_id: None,
@@ -12636,6 +12778,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: Some(true),
             source_group_id: None,
@@ -12673,6 +12816,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: Some(true),
             source_group_id: None,
@@ -13411,6 +13555,256 @@ pub(crate) mod tests {
                 .and_then(|value| value.as_bool()),
             Some(false)
         );
+    }
+
+    fn convert_test_service(
+        activities: Vec<Activity>,
+        accounts: &[(&str, &str)],
+    ) -> (ActivityService, Arc<MockActivityRepository>) {
+        let account_service = Arc::new(MockAccountService::new());
+        for (id, currency) in accounts {
+            account_service.add_account(create_test_account(id, currency));
+        }
+        let activity_repository = Arc::new(MockActivityRepository::new());
+        for activity in activities {
+            activity_repository.add_activity(activity);
+        }
+        let service = ActivityService::new(
+            activity_repository.clone(),
+            account_service,
+            Arc::new(MockAssetService::new()),
+            Arc::new(MockFxService::new()),
+            Arc::new(MockQuoteService),
+        );
+        (service, activity_repository)
+    }
+
+    #[tokio::test]
+    async fn convert_to_internal_transfer_creates_the_other_leg() {
+        let mut withdrawal = create_cash_transfer_activity(
+            "withdrawal",
+            "acc-join",
+            ACTIVITY_TYPE_WITHDRAWAL,
+            "2026-10-23T00:00:00Z",
+            dec!(500),
+            "CAD",
+        );
+        withdrawal.notes = Some("e-Transfer: Me CIBC".to_string());
+        let (service, _) = convert_test_service(
+            vec![withdrawal],
+            &[("acc-join", "CAD"), ("acc-cibc", "CAD")],
+        );
+
+        let pair = service
+            .convert_to_internal_transfer(ConvertToTransferRequest {
+                activity_id: "withdrawal".to_string(),
+                counterpart_activity_id: None,
+                counterpart_account_id: Some("acc-cibc".to_string()),
+                counterpart_amount: None,
+                split_review: None,
+            })
+            .await
+            .expect("conversion should succeed");
+
+        assert_eq!(pair.transfer_out.id, "withdrawal");
+        assert_eq!(
+            pair.transfer_out.effective_type(),
+            ACTIVITY_TYPE_TRANSFER_OUT
+        );
+        assert_eq!(
+            pair.transfer_out.notes.as_deref(),
+            Some("e-Transfer: Me CIBC")
+        );
+        assert_eq!(pair.transfer_in.account_id, "acc-cibc");
+        assert_eq!(pair.transfer_in.effective_type(), ACTIVITY_TYPE_TRANSFER_IN);
+        assert_eq!(pair.transfer_in.amount, Some(dec!(500)));
+        assert_eq!(pair.transfer_in.currency, "CAD");
+        assert_eq!(
+            pair.transfer_in.activity_date,
+            pair.transfer_out.activity_date
+        );
+        assert!(pair.transfer_in.source_group_id.is_some());
+        assert_eq!(
+            pair.transfer_in.source_group_id,
+            pair.transfer_out.source_group_id
+        );
+        assert_eq!(
+            pair.transfer_out
+                .metadata
+                .as_ref()
+                .and_then(|metadata| metadata.pointer("/flow/is_external"))
+                .and_then(|value| value.as_bool()),
+            Some(false)
+        );
+    }
+
+    #[tokio::test]
+    async fn convert_to_internal_transfer_retypes_an_existing_deposit() {
+        let (service, repository) = convert_test_service(
+            vec![
+                create_cash_transfer_activity(
+                    "withdrawal",
+                    "acc-join",
+                    ACTIVITY_TYPE_WITHDRAWAL,
+                    "2026-10-23T00:00:00Z",
+                    dec!(500),
+                    "CAD",
+                ),
+                create_cash_transfer_activity(
+                    "deposit",
+                    "acc-cibc",
+                    ACTIVITY_TYPE_DEPOSIT,
+                    "2026-10-24T00:00:00Z",
+                    dec!(500),
+                    "CAD",
+                ),
+            ],
+            &[("acc-join", "CAD"), ("acc-cibc", "CAD")],
+        );
+
+        let candidates = service
+            .find_transfer_match_candidates(TransferMatchCandidateRequest {
+                activity_id: "withdrawal".to_string(),
+                window_days: None,
+                limit: None,
+            })
+            .expect("a withdrawal has candidates");
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0].activity.id, "deposit");
+
+        let pair = service
+            .convert_to_internal_transfer(ConvertToTransferRequest {
+                activity_id: "withdrawal".to_string(),
+                counterpart_activity_id: Some("deposit".to_string()),
+                counterpart_account_id: None,
+                counterpart_amount: None,
+                split_review: None,
+            })
+            .await
+            .expect("conversion should succeed");
+
+        assert_eq!(pair.transfer_in.id, "deposit");
+        assert_eq!(pair.transfer_in.effective_type(), ACTIVITY_TYPE_TRANSFER_IN);
+        // The deposit keeps its own posting date.
+        assert_eq!(
+            pair.transfer_in.activity_date,
+            parse_test_activity_datetime("2026-10-24T00:00:00Z")
+        );
+        assert_eq!(repository.activities.lock().unwrap().len(), 2);
+    }
+
+    #[tokio::test]
+    async fn convert_to_internal_transfer_rejects_invalid_other_sides() {
+        let mut linked = create_cash_transfer_activity(
+            "linked-in",
+            "acc-cibc",
+            ACTIVITY_TYPE_TRANSFER_IN,
+            "2026-10-23T00:00:00Z",
+            dec!(500),
+            "CAD",
+        );
+        linked.source_group_id = Some("group-1".to_string());
+        let mut linked_out = create_cash_transfer_activity(
+            "linked-out",
+            "acc-usd",
+            ACTIVITY_TYPE_TRANSFER_OUT,
+            "2026-10-23T00:00:00Z",
+            dec!(500),
+            "CAD",
+        );
+        linked_out.source_group_id = Some("group-1".to_string());
+        let mut draft_deposit = create_cash_transfer_activity(
+            "draft-deposit",
+            "acc-cibc",
+            ACTIVITY_TYPE_DEPOSIT,
+            "2026-10-23T00:00:00Z",
+            dec!(500),
+            "CAD",
+        );
+        draft_deposit.status = crate::activities::ActivityStatus::Draft;
+        let mut void_withdrawal = create_cash_transfer_activity(
+            "void-withdrawal",
+            "acc-join",
+            ACTIVITY_TYPE_WITHDRAWAL,
+            "2026-10-23T00:00:00Z",
+            dec!(500),
+            "CAD",
+        );
+        void_withdrawal.status = crate::activities::ActivityStatus::Void;
+        let (service, repository) = convert_test_service(
+            vec![
+                create_cash_transfer_activity(
+                    "withdrawal",
+                    "acc-join",
+                    ACTIVITY_TYPE_WITHDRAWAL,
+                    "2026-10-23T00:00:00Z",
+                    dec!(500),
+                    "CAD",
+                ),
+                create_cash_transfer_activity(
+                    "other-withdrawal",
+                    "acc-cibc",
+                    ACTIVITY_TYPE_WITHDRAWAL,
+                    "2026-10-23T00:00:00Z",
+                    dec!(500),
+                    "CAD",
+                ),
+                linked,
+                linked_out,
+                draft_deposit,
+                void_withdrawal,
+            ],
+            &[("acc-join", "CAD"), ("acc-cibc", "CAD"), ("acc-usd", "USD")],
+        );
+        let convert = |counterpart_activity_id: Option<&str>,
+                       counterpart_account_id: Option<&str>| {
+            service.convert_to_internal_transfer(ConvertToTransferRequest {
+                activity_id: "withdrawal".to_string(),
+                counterpart_activity_id: counterpart_activity_id.map(str::to_string),
+                counterpart_account_id: counterpart_account_id.map(str::to_string),
+                counterpart_amount: None,
+                split_review: None,
+            })
+        };
+
+        assert!(
+            convert(None, Some("acc-join")).await.is_err(),
+            "same account"
+        );
+        assert!(
+            convert(None, Some("acc-usd")).await.is_err(),
+            "a different currency needs the other side's amount"
+        );
+        assert!(
+            convert(Some("other-withdrawal"), None).await.is_err(),
+            "same direction"
+        );
+        assert!(
+            convert(Some("linked-in"), None).await.is_err(),
+            "already linked"
+        );
+        assert!(convert(None, None).await.is_err(), "no other side");
+        assert!(
+            convert(Some("draft-deposit"), None).await.is_err(),
+            "other side not posted"
+        );
+        assert!(
+            service
+                .convert_to_internal_transfer(ConvertToTransferRequest {
+                    activity_id: "void-withdrawal".to_string(),
+                    counterpart_activity_id: None,
+                    counterpart_account_id: Some("acc-cibc".to_string()),
+                    counterpart_amount: None,
+                    split_review: None,
+                })
+                .await
+                .is_err(),
+            "voided source"
+        );
+        let activities = repository.activities.lock().unwrap();
+        assert_eq!(activities.len(), 6);
+        assert!(activities.iter().any(|activity| activity.id == "withdrawal"
+            && activity.activity_type == ACTIVITY_TYPE_WITHDRAWAL));
     }
 
     #[tokio::test]
@@ -14472,6 +14866,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: Some("asset-custom".to_string()),
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -14724,6 +15119,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -14800,6 +15196,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -14940,6 +15337,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: true,
             is_external: None,
             source_group_id: None,
@@ -15033,6 +15431,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -15044,6 +15443,7 @@ pub(crate) mod tests {
                 base.clone(),
                 ActivityImport {
                     line_number: Some(2),
+                    source_reconciliation: None,
                     force_import: true,
                     is_external: None,
                     source_group_id: None,
@@ -15133,6 +15533,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: true, // flag set but no duplicate exists
             is_external: None,
             source_group_id: None,
@@ -15513,6 +15914,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -15583,6 +15985,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -15653,6 +16056,7 @@ pub(crate) mod tests {
                 subtype: None,
                 asset_id: None,
                 isin: None,
+                source_reconciliation: None,
                 force_import: false,
                 is_external: None,
                 source_group_id: None,
@@ -15735,6 +16139,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -15818,6 +16223,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -15889,6 +16295,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -15969,6 +16376,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -16641,6 +17049,7 @@ pub(crate) mod tests {
             subtype: None,
             asset_id: None,
             isin: None,
+            source_reconciliation: None,
             force_import: false,
             is_external: None,
             source_group_id: None,
@@ -17125,6 +17534,115 @@ pub(crate) mod tests {
         assert_eq!(stored[0].amount, None);
         assert!(!stored[0].needs_review);
         assert_eq!(stored[0].status, ActivityStatus::Posted);
+    }
+
+    #[tokio::test]
+    async fn import_links_quantity_only_crypto_transfers_and_keeps_in_kind_fee_asset() {
+        let asset = create_test_asset_with_instrument(
+            "btc-eur",
+            "BTC-EUR",
+            None,
+            Some(InstrumentType::Crypto),
+            "EUR",
+        );
+        let account_service = Arc::new(MockAccountService::new());
+        account_service.add_account(create_test_account("kraken", "EUR"));
+        account_service.add_account(create_test_account("wallet", "EUR"));
+        let asset_service = Arc::new(MockAssetService::new());
+        asset_service.add_asset(asset);
+        let repository = Arc::new(MockActivityRepository::new());
+        let service = ActivityService::new(
+            repository.clone(),
+            account_service,
+            asset_service,
+            Arc::new(MockFxService::new()),
+            Arc::new(MockQuoteService),
+        );
+
+        // Both legs have the same timestamp and carry only units, like
+        // Kraken's withdrawal rows. The linker must use the asset quantity.
+        let mut transfer_out = qa_import_row("kraken", "TRANSFER_OUT", "EUR");
+        transfer_out.date = "2025-01-02T10:00:00Z".to_string();
+        transfer_out.symbol = "BTC-EUR".to_string();
+        transfer_out.asset_id = Some("btc-eur".to_string());
+        transfer_out.instrument_type = Some("CRYPTO".to_string());
+        transfer_out.quote_ccy = Some("EUR".to_string());
+        transfer_out.quantity = Some(dec!(0.05));
+        transfer_out.account_id = Some("kraken".to_string());
+        transfer_out.is_external = Some(true);
+        transfer_out.line_number = Some(1);
+
+        let mut transfer_in = transfer_out.clone();
+        transfer_in.activity_type = "TRANSFER_IN".to_string();
+        transfer_in.account_id = Some("wallet".to_string());
+        transfer_in.line_number = Some(2);
+        transfer_in.comment = Some("Kraken wallet withdrawal".to_string());
+
+        let mut fee = qa_import_row("kraken", "FEE", "USD");
+        fee.date = "2025-01-02T10:00:00Z".to_string();
+        fee.symbol = "BTC-EUR".to_string();
+        fee.asset_id = Some("btc-eur".to_string());
+        fee.instrument_type = Some("CRYPTO".to_string());
+        fee.quote_ccy = Some("EUR".to_string());
+        fee.quantity = Some(dec!(0.001));
+        fee.amount = Some(dec!(0.1));
+        fee.subtype = Some("FEE_IN_KIND".to_string());
+        fee.line_number = Some(3);
+
+        let result = service
+            .import_activities(vec![transfer_out, transfer_in, fee])
+            .await
+            .expect("Kraken rows should import");
+        assert!(result.summary.success);
+        assert_eq!(result.summary.imported, 3);
+        let stored = repository.get_activities().expect("stored rows");
+        assert_eq!(stored.len(), 3);
+        let out = stored
+            .iter()
+            .find(|row| row.activity_type == "TRANSFER_OUT")
+            .expect("outgoing transfer");
+        let incoming = stored
+            .iter()
+            .find(|row| row.activity_type == "TRANSFER_IN")
+            .expect("incoming transfer");
+        assert_eq!(out.quantity, Some(dec!(0.05)));
+        assert_eq!(incoming.quantity, Some(dec!(0.05)));
+        assert_eq!(out.source_group_id, incoming.source_group_id);
+        assert!(
+            out.source_group_id.is_some(),
+            "the transfer pair should link"
+        );
+        for transfer in [out, incoming] {
+            assert_eq!(
+                transfer
+                    .metadata
+                    .as_ref()
+                    .and_then(|metadata| metadata.get("flow"))
+                    .and_then(|flow| flow.get("is_external"))
+                    .and_then(|value| value.as_bool()),
+                Some(false),
+                "a matched wallet transfer is internal"
+            );
+        }
+
+        let fee = stored
+            .iter()
+            .find(|row| row.activity_type == "FEE")
+            .expect("asset fee");
+        assert_eq!(fee.subtype.as_deref(), Some("FEE_IN_KIND"));
+        assert_eq!(fee.asset_id.as_deref(), Some("btc-eur"));
+        assert_eq!(fee.quantity, Some(dec!(0.001)));
+        assert_eq!(fee.amount, Some(dec!(0.1)));
+        assert!(!fee.needs_review);
+        assert_eq!(
+            crate::portfolio::economic_events::ActivityEconomicsResolver::resolve_cash(
+                fee,
+                Decimal::ONE,
+            )
+            .signed_cash_effect,
+            None,
+            "an in-kind fee does not change cash"
+        );
     }
 
     #[tokio::test]

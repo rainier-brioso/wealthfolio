@@ -1,4 +1,4 @@
-import { worksheetCategoryLabel } from "./allocation-worksheet-labels";
+import { useChangeArrow, worksheetCategoryLabel } from "./allocation-worksheet-labels";
 import {
   Card,
   Checkbox,
@@ -899,6 +899,7 @@ function GapRow({
   const { t } = useTranslation();
   const { formatRoundedAmount } = useAmountFormatting();
   const { formatPercent } = useNumberFormatting();
+  const arrow = useChangeArrow();
   const isInRange = row.status === "in_band";
   const bandFrom = barPercent(row.targetBps - row.effectiveBandBps);
   const bandTo = barPercent(row.targetBps + row.effectiveBandBps);
@@ -915,7 +916,7 @@ function GapRow({
           {worksheetCategoryLabel(t, taxonomyId, row.categoryId, row.categoryName)}
         </span>
         <span className="text-muted-foreground text-2xs shrink-0 font-mono tabular-nums">
-          {formatPercent(row.currentBps / 10_000, { digits: 1 })} →{" "}
+          {formatPercent(row.currentBps / 10_000, { digits: 1 })} {arrow}{" "}
           {formatPercent(row.targetBps / 10_000, { digits: 1 })}
         </span>
         {/* Signed the way it moves: + to add, − to reduce. */}
@@ -980,7 +981,7 @@ function CashToDeploy({
 }: WorksheetSetupProps) {
   const { t } = useTranslation();
   const { formatAmount, currencyFractionDigits } = useAmountFormatting();
-  const { decimalSeparator, groupSeparator } = useNumberFormatting();
+  const { decimalSeparator, groupSeparator, formatPercent } = useNumberFormatting();
   const fractionDigits = currencyFractionDigits(currency);
   const [isTyping, setIsTyping] = useState(false);
   const count = selectedAccountIds.length;
@@ -1032,7 +1033,7 @@ function CashToDeploy({
     </span>
   ) : cash.isKnown && share !== null && count > 0 && !isPresetShare ? (
     // A preset already says which share applies; a typed total says it here.
-    t("allocation:worksheet.cashShare", { percent: formatDecimalInput(share * 100, 1) })
+    t("allocation:worksheet.cashShare", { percent: formatPercent(share, { digits: 1 }) })
   ) : contributions > 0 ? (
     t("allocation:worksheet.cashPlusContribution", {
       amount: formatAmount(contributions, currency),
@@ -1071,7 +1072,9 @@ function CashToDeploy({
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                {fraction === 1 ? t("allocation:worksheet.allCash") : `${fraction * 100}%`}
+                {fraction === 1
+                  ? t("allocation:worksheet.allCash")
+                  : formatPercent(fraction, { digits: 0 })}
               </button>
             );
           })}

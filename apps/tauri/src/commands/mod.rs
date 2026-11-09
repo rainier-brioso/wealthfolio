@@ -21,6 +21,7 @@ pub mod error;
 pub mod fire;
 pub mod goal;
 pub mod health;
+pub mod lan_sync;
 pub mod limits;
 pub mod market_data;
 pub mod mcp;

@@ -1,4 +1,6 @@
 import type { LocalDraftErrorMessages } from "../utils/draft-validation-messages";
+import type { SourceReconciliation } from "@/lib/source-reconciliation";
+import { hasPartialSourceOperation } from "../utils/source-operation-groups";
 import enActivity from "@/i18n/locales/en/activity.json";
 import {
   createContext,
@@ -46,6 +48,11 @@ export type DraftActivityStatus = "valid" | "warning" | "error" | "skipped" | "d
 export type DraftCurrencySource = "csv" | "default" | "manual" | "resolved";
 
 export interface DraftActivity {
+  /** Original asset for a source closing quote; independent of editable comments. */
+  sourceQuoteSymbol?: string;
+  sourceReconciliation?: SourceReconciliation;
+  /** Transient source group: a trade and its associated internal transfer legs. */
+  sourceOperationGroup?: string;
   rowIndex: number;
   rawRow: string[];
 
@@ -119,9 +126,22 @@ export interface ImportResult {
   errorMessage?: string;
 }
 
-type ImportValidationError = string | { key: "activity:import.review.backend_failed" };
+type ImportValidationError =
+  | string
+  | {
+      key:
+        | "activity:import.review.backend_failed"
+        | "activity:import.inversis.errors.partial-operation-group";
+    };
 
+export interface SourceImportQuote {
+  symbol: string;
+  date: string;
+  price: string;
+  currency: string;
+}
 export interface ImportState {
+  sourceImport: { sourceId: string; quotes?: SourceImportQuote[] } | null;
   step: ImportStep;
   stepOrder: ImportStep[];
   file: File | null;
@@ -167,6 +187,7 @@ export const defaultParseConfig: ParseConfig = {
 };
 
 const INITIAL_STATE: ImportState = {
+  sourceImport: null,
   step: "upload",
   stepOrder: ["upload", "mapping", "assets", "review", "confirm", "result"],
   file: null,
@@ -198,6 +219,11 @@ const INITIAL_STATE: ImportState = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type ImportAction =
+  | {
+      type: "SET_SOURCE_IMPORT";
+      payload: { sourceId: string; drafts: DraftActivity[]; quotes?: SourceImportQuote[] };
+    }
+  | { type: "CLEAR_SOURCE_IMPORT" }
   | { type: "SET_FILE"; payload: File }
   | { type: "SET_ACCOUNT_ID"; payload: string }
   | { type: "SET_PARSE_CONFIG"; payload: Partial<ParseConfig> }
@@ -305,11 +331,48 @@ function importReducer(state: ImportState, action: ImportAction): ImportState {
     ].some((field) => field in updates);
 
   switch (action.type) {
+    case "SET_SOURCE_IMPORT":
+      return {
+        ...state,
+        sourceImport: {
+          sourceId: action.payload.sourceId,
+          ...(action.payload.quotes ? { quotes: action.payload.quotes } : {}),
+        },
+        file: null,
+        headers: [],
+        parsedRows: [],
+        mapping: null,
+        skippedRowIndexes: [],
+        draftActivities: action.payload.drafts,
+        assetPreviewItems: [],
+        pendingImportAssets: {},
+        assetPreviewError: null,
+        validationError: null,
+        draftRevision: state.draftRevision + 1,
+        lastValidatedRevision: null,
+      };
+
+    case "CLEAR_SOURCE_IMPORT":
+      return {
+        ...state,
+        sourceImport: null,
+        file: null,
+        headers: [],
+        parsedRows: [],
+        draftActivities: [],
+        assetPreviewItems: [],
+        pendingImportAssets: {},
+        assetPreviewError: null,
+        validationError: null,
+        draftRevision: state.draftRevision + 1,
+        lastValidatedRevision: null,
+      };
+
     case "SET_FILE":
-      return { ...state, file: action.payload };
+      return { ...state, file: action.payload, sourceImport: null };
 
     case "SET_ACCOUNT_ID":
-      return { ...state, accountId: action.payload };
+      return { ...state, accountId: action.payload, sourceImport: null };
 
     case "SET_PARSE_CONFIG":
       return {
@@ -320,6 +383,7 @@ function importReducer(state: ImportState, action: ImportAction): ImportState {
     case "SET_PARSED_DATA":
       return {
         ...state,
+        sourceImport: null,
         headers: action.payload.headers,
         parsedRows: action.payload.rows,
         // A new parse can renumber rows, so skips from the old rows no longer apply
@@ -605,6 +669,7 @@ export function ImportProvider({ children, initialAccountId }: ImportProviderPro
                 isValid: draft.status === "valid" || draft.status === "warning",
                 lineNumber: draft.rowIndex + 1,
                 comment: draft.comment,
+                sourceReconciliation: draft.sourceReconciliation,
                 fxRate: draft.fxRate,
                 subtype: draft.subtype,
               }) satisfies Partial<ActivityImport>,
@@ -716,8 +781,15 @@ export function ImportProvider({ children, initialAccountId }: ImportProviderPro
         }
         dispatch({ type: "SET_VALIDATED_DRAFT_ACTIVITIES", payload: updatedDrafts });
         dispatch({ type: "MARK_VALIDATED", payload: requestedRevision });
+        const partialSourceOperation = hasPartialSourceOperation(updatedDrafts);
+        if (partialSourceOperation) {
+          dispatch({
+            type: "SET_VALIDATION_ERROR",
+            payload: { key: "activity:import.inversis.errors.partial-operation-group" },
+          });
+        }
         const hasErrors = updatedDrafts.some((d) => d.status !== "skipped" && d.status === "error");
-        return { ok: true, hasErrors };
+        return { ok: true, hasErrors: hasErrors || partialSourceOperation };
       } catch (error) {
         logger.error(`Backend validation failed: ${error}`);
         if (run === validationRunRef.current && draftRevisionRef.current <= requestedRevision) {

@@ -254,6 +254,10 @@ fn resolve_cash(
 ) -> Option<CashEffect> {
     use ActivityKind::*;
 
+    if activity.kind == Fee && activity.subtype == Some(Subtype::FeeInKind) {
+        return None;
+    }
+
     if activity.kind == Split || activity.kind == Adjustment || activity.kind == Unknown {
         return None;
     }
@@ -398,6 +402,10 @@ fn action_for(activity: &Activity, diagnostics: &mut Vec<Diagnostic>) -> Action 
             ));
             Action::None
         }
+        (Fee, Some(asset)) if activity.subtype == Some(Subtype::FeeInKind) => Action::AssetFee {
+            asset,
+            quantity: activity.quantity,
+        },
         (TransferIn | TransferOut, Some(asset)) => Action::SecurityTransfer {
             asset,
             direction: if activity.kind == TransferIn {

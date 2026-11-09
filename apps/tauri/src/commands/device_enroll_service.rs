@@ -32,6 +32,15 @@ pub async fn get_device_sync_state(context: ConnectAccess) -> Result<SyncStateRe
 #[tauri::command]
 pub async fn enable_device_sync(context: ConnectAccess) -> Result<EnableSyncResult, String> {
     let context = context.context()?;
+    let _lan_guard = context.sync_lifecycle.lock().await;
+    if context
+        .secret_store
+        .get_secret(wealthfolio_core::secrets::LAN_SYNC_CONFIG_KEY)
+        .map_err(|e| e.to_string())?
+        .is_some()
+    {
+        return Err("Disconnect Wi-Fi sync before enabling Connect device sync".into());
+    }
     let token = context.connect_service().get_valid_access_token().await?;
     let result = context
         .device_enroll_service()
@@ -71,6 +80,15 @@ pub async fn enable_device_sync(context: ConnectAccess) -> Result<EnableSyncResu
 #[tauri::command]
 pub async fn clear_device_sync_data(context: ConnectAccess) -> Result<(), String> {
     let context = context.context()?;
+    let _lan_guard = context.sync_lifecycle.lock().await;
+    if context
+        .secret_store
+        .get_secret(wealthfolio_core::secrets::LAN_SYNC_CONFIG_KEY)
+        .map_err(|e| e.to_string())?
+        .is_some()
+    {
+        return Err("Disconnect Wi-Fi sync before clearing Connect device sync".into());
+    }
     // A restore prepared for the old identity must never be approved later.
     context.device_sync_runtime().clear_restore().await;
     ensure_background_engine_stopped(Arc::clone(&context)).await?;
@@ -97,6 +115,15 @@ pub async fn clear_device_sync_data(context: ConnectAccess) -> Result<(), String
 #[tauri::command]
 pub async fn reinitialize_device_sync(context: ConnectAccess) -> Result<EnableSyncResult, String> {
     let context = context.context()?;
+    let _lan_guard = context.sync_lifecycle.lock().await;
+    if context
+        .secret_store
+        .get_secret(wealthfolio_core::secrets::LAN_SYNC_CONFIG_KEY)
+        .map_err(|e| e.to_string())?
+        .is_some()
+    {
+        return Err("Disconnect Wi-Fi sync before enabling Connect device sync".into());
+    }
     context.device_sync_runtime().clear_restore().await;
     let token = context.connect_service().get_valid_access_token().await?;
     let result = context

@@ -64,6 +64,7 @@ pub mod env;
 pub mod error;
 #[cfg(test)]
 pub mod eval;
+pub mod import_matching;
 #[cfg(feature = "test-utils")]
 pub mod live_evals;
 mod model_families;

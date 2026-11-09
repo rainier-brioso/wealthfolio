@@ -21,6 +21,7 @@ import { AmountDisplay } from "@wealthfolio/ui/components/financial/amount-displ
 import { useTranslation } from "react-i18next";
 import { useBalancePrivacy } from "@/hooks/use-balance-privacy";
 import { getProviderMappingReasons } from "./activity-data-grid/types";
+import { ActivitySourceReconciliation } from "./activity-source-reconciliation";
 
 /** An activity with no stored amount booked no cash; rendering `Number(null)`
  * would claim it moved exactly zero. */
@@ -233,6 +234,7 @@ export function ActivityDetailSheet({ activity, open, onOpenChange }: ActivityDe
           </div>
 
           <ActivityReviewReasons activity={activity} />
+          <ActivitySourceReconciliation activity={activity} />
 
           {/* Transaction Details */}
           <DetailSection

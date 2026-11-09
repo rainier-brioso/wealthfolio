@@ -97,6 +97,14 @@ pub async fn store_sync_session(
     context
         .connect_service()
         .store_session(token, confirm_rebind.unwrap_or(false), || async {
+            if context
+                .secret_store
+                .get_secret(wealthfolio_core::secrets::LAN_SYNC_CONFIG_KEY)
+                .map_err(|e| e.to_string())?
+                .is_some()
+            {
+                return Err("Disconnect Wi-Fi sync before changing the Connect account".into());
+            }
             #[cfg(feature = "device-sync")]
             {
                 context.device_sync_runtime().clear_restore().await;

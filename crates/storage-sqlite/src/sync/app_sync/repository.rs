@@ -3131,6 +3131,20 @@ impl AppSyncRepository {
             serde_json::Value,
         )>,
     ) -> Result<usize> {
+        self.apply_remote_events_batch(events, false).await
+    }
+
+    /// A direct peer has no relay from which to recover a rejected event.
+    /// Roll back the whole page on any apply/FK error; never acknowledge a skip.
+    pub async fn apply_lan_events_batch(&self, events: Vec<RemoteReplayEvent>) -> Result<usize> {
+        self.apply_remote_events_batch(events, true).await
+    }
+
+    async fn apply_remote_events_batch(
+        &self,
+        events: Vec<RemoteReplayEvent>,
+        strict: bool,
+    ) -> Result<usize> {
         if events.is_empty() {
             return Ok(0);
         }
@@ -3181,6 +3195,11 @@ impl AppSyncRepository {
                             Ok(applied) => return Ok(applied),
                             Err(ReplayAttemptError::Culprits(culprits)) => {
                                 pending.restore(pending_before);
+                                if strict {
+                                    return Err(Error::Database(DatabaseError::Internal(
+                                        "LAN sync page rejected; no events were acknowledged".into(),
+                                    )));
+                                }
                                 for (index, error) in culprits {
                                     let (entity, entity_id, op, event_id, _, seq, _) =
                                         &events[index];
@@ -3553,8 +3572,27 @@ impl AppSyncRepository {
     }
 
     pub async fn export_snapshot_sqlite_image(&self, tables: Vec<String>) -> Result<Vec<u8>> {
+        self.export_snapshot_image(tables, false)
+            .await
+            .map(|(image, _)| image)
+    }
+
+    /// Capture the bootstrap acknowledgement boundary in the same transaction
+    /// as the snapshot. Later writes must stay pending for incremental delivery.
+    pub async fn export_snapshot_with_outbox(
+        &self,
+        tables: Vec<String>,
+    ) -> Result<(Vec<u8>, Vec<String>)> {
+        self.export_snapshot_image(tables, true).await
+    }
+
+    async fn export_snapshot_image(
+        &self,
+        tables: Vec<String>,
+        capture_outbox: bool,
+    ) -> Result<(Vec<u8>, Vec<String>)> {
         let pool = Arc::clone(&self.pool);
-        tokio::task::spawn_blocking(move || -> Result<Vec<u8>> {
+        tokio::task::spawn_blocking(move || -> Result<(Vec<u8>, Vec<String>)> {
             let mut conn = get_connection(&pool)?;
             let table_set = if tables.is_empty() {
                 APP_SYNC_TABLES
@@ -3587,7 +3625,7 @@ impl AppSyncRepository {
                     .execute(tx)
                     .map_err(StorageError::from)?;
 
-                let run_export = (|| -> Result<()> {
+                let run_export = (|| -> Result<Vec<String>> {
                     for table in &table_set {
                         let table_ident = quote_identifier(table);
                         let filter = snapshot_copy_filter_for_table(table);
@@ -3603,17 +3641,28 @@ impl AppSyncRepository {
                             .execute(tx)
                             .map_err(StorageError::from)?;
                     }
-                    Ok(())
+                    if capture_outbox {
+                        sync_outbox::table
+                            .filter(sync_outbox::sent.eq(0))
+                            .select(sync_outbox::event_id)
+                            .load::<String>(tx)
+                            .map_err(|e| Error::from(StorageError::from(e)))
+                    } else {
+                        Ok(Vec::new())
+                    }
                 })();
 
                 let detach_sql = format!("DETACH DATABASE {}", snapshot_alias);
                 let _ = diesel::sql_query(detach_sql).execute(tx);
                 run_export.map_err(StorageError::from)
             });
-            if let Err(err) = tx_result {
-                let _ = std::fs::remove_file(&snapshot_path);
-                return Err(Error::from(err));
-            }
+            let event_ids = match tx_result {
+                Ok(ids) => ids,
+                Err(err) => {
+                    let _ = std::fs::remove_file(&snapshot_path);
+                    return Err(Error::from(err));
+                }
+            };
 
             // Remove the snapshot on every exit path, not just the success one.
             let payload = std::fs::read(&snapshot_path);
@@ -3624,7 +3673,7 @@ impl AppSyncRepository {
                     e
                 )))
             })?;
-            Ok(payload)
+            Ok((payload, event_ids))
         })
         .await
         .map_err(|e| {
@@ -3643,8 +3692,58 @@ impl AppSyncRepository {
         device_id_value: String,
         key_version_value: Option<i32>,
     ) -> Result<()> {
+        self.restore_snapshot_from_file(
+            snapshot_db_path,
+            tables,
+            cursor_value,
+            device_id_value,
+            key_version_value,
+            false,
+        )
+        .await
+    }
+
+    /// Initial LAN joining must never replace a populated profile, including
+    /// writes that committed while the initial download was in flight.
+    pub async fn restore_lan_snapshot_from_file(
+        &self,
+        snapshot_db_path: String,
+        device_id: String,
+    ) -> Result<()> {
+        self.restore_snapshot_from_file(snapshot_db_path, Vec::new(), 0, device_id, Some(1), true)
+            .await
+    }
+
+    async fn restore_snapshot_from_file(
+        &self,
+        snapshot_db_path: String,
+        tables: Vec<String>,
+        cursor_value: i64,
+        device_id_value: String,
+        key_version_value: Option<i32>,
+        require_empty: bool,
+    ) -> Result<()> {
         self.writer
             .exec(move |conn| {
+                if require_empty {
+                    for table in OVERWRITE_RISK_UNFILTERED_TABLES {
+                        let row = diesel::sql_query(format!(
+                            "SELECT COUNT(*) AS count FROM {}", quote_identifier(table),
+                        )).get_result::<TableRowCountResult>(conn).map_err(StorageError::from)?;
+                        if row.count > 0 {
+                            return Err(Error::Validation(wealthfolio_core::errors::ValidationError::InvalidInput("LAN joining requires an empty profile".into())));
+                        }
+                    }
+                    for spec in OVERWRITE_RISK_FILTERED_TABLES {
+                        let row = diesel::sql_query(format!(
+                            "SELECT COUNT(*) AS count FROM {} WHERE {}",
+                            quote_identifier(spec.table), spec.filter.sql(),
+                        )).get_result::<TableRowCountResult>(conn).map_err(StorageError::from)?;
+                        if row.count > 0 {
+                            return Err(Error::Validation(wealthfolio_core::errors::ValidationError::InvalidInput("LAN joining requires an empty profile".into())));
+                        }
+                    }
+                }
                 let table_set = canonical_sync_table_set(tables)?;
                 let table_set_lookup = table_set.iter().cloned().collect::<HashSet<_>>();
 
@@ -5117,6 +5216,85 @@ mod tests {
             .first(&mut conn)
             .expect("count rows");
         assert_eq!(row_count, 0);
+    }
+
+    #[tokio::test]
+    async fn lan_batch_rolls_back_good_events_when_a_foreign_key_is_missing() {
+        let (pool, writer, _dir) = setup_db();
+        let repo = AppSyncRepository::new(pool.clone(), writer);
+        insert_account_for_test(&mut get_connection(&pool).unwrap(), "keep-account").unwrap();
+        let deletion = (
+            SyncEntity::Account,
+            "keep-account".into(),
+            SyncOperation::Delete,
+            "lan-good-event".into(),
+            "2026-02-01T00:00:00Z".into(),
+            0,
+            serde_json::json!({"id": "keep-account"}),
+        );
+        let invalid = (
+            SyncEntity::SpendingActivityEvent,
+            "missing-activity".into(),
+            SyncOperation::Create,
+            "lan-invalid-event".into(),
+            "2026-02-01T00:00:00Z".into(),
+            0,
+            serde_json::json!({"activity_id": "missing-activity", "event_id": "missing-event",
+                "created_at": "2026-02-01T00:00:00Z", "updated_at": "2026-02-01T00:00:00Z"}),
+        );
+        assert!(repo
+            .apply_lan_events_batch(vec![deletion.clone(), invalid])
+            .await
+            .is_err());
+        assert!(!repo.has_applied_event("lan-good-event").unwrap());
+        assert!(!repo.has_applied_event("lan-invalid-event").unwrap());
+        let count: i64 = accounts::table
+            .filter(accounts::id.eq("keep-account"))
+            .count()
+            .get_result(&mut get_connection(&pool).unwrap())
+            .unwrap();
+        assert_eq!(count, 1);
+        assert_eq!(
+            repo.apply_lan_events_batch(vec![deletion.clone()])
+                .await
+                .unwrap(),
+            1
+        );
+        assert_eq!(
+            repo.apply_lan_events_batch(vec![deletion]).await.unwrap(),
+            0
+        );
+    }
+
+    #[tokio::test]
+    async fn lan_initial_restore_checks_empty_profile_inside_the_write_transaction() {
+        let (pool, writer, _dir) = setup_db();
+        let repo = AppSyncRepository::new(pool.clone(), writer);
+        let image = repo.export_snapshot_sqlite_image(Vec::new()).await.unwrap();
+        let stage = tempfile::NamedTempFile::new().unwrap();
+        std::fs::write(stage.path(), image).unwrap();
+        // A user mutation after the preflight empty check but before import.
+        assert_eq!(
+            repo.get_local_sync_overwrite_risk_summary()
+                .unwrap()
+                .total_rows,
+            0
+        );
+        insert_account_for_test(&mut get_connection(&pool).unwrap(), "late-mobile-edit").unwrap();
+        assert!(repo
+            .restore_lan_snapshot_from_file(
+                stage.path().to_string_lossy().into_owned(),
+                "lan-device".into()
+            )
+            .await
+            .is_err());
+        assert!(repo.needs_bootstrap("lan-device").unwrap());
+        let count: i64 = accounts::table
+            .filter(accounts::id.eq("late-mobile-edit"))
+            .count()
+            .get_result(&mut get_connection(&pool).unwrap())
+            .unwrap();
+        assert_eq!(count, 1);
     }
 
     #[tokio::test]

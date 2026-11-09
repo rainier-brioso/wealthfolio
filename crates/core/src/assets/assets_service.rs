@@ -1157,12 +1157,14 @@ impl AssetService {
         &self,
         asset_id: &str,
         instrument_type: Option<&InstrumentType>,
+        instrument_type_label: Option<&str>,
+        name: Option<&str>,
         kind: &AssetKind,
     ) {
         if let Some(taxonomy_service) = &self.taxonomy_service {
             let classifier = AutoClassificationService::new(Arc::clone(taxonomy_service));
             classifier
-                .classify_from_spec(asset_id, instrument_type, kind)
+                .classify_new_asset(asset_id, instrument_type, instrument_type_label, name, kind)
                 .await;
         }
     }
@@ -1943,7 +1945,12 @@ impl AssetServiceTrait for AssetService {
                     provider_id: provider_id.clone(),
                     provider_symbol: provider_symbol.clone(),
                     notes: None,
-                    metadata: None,
+                    // Keep the source identity independently of the provider's quote symbol.
+                    metadata: input.isin.as_deref().and_then(|isin| {
+                        crate::utils::isin::parse_isin(isin)
+                            .ok()
+                            .map(|_| serde_json::json!({ "identifiers": { "isin": isin.trim().to_uppercase() } }))
+                    }),
                 })
             } else {
                 None
@@ -2284,7 +2291,7 @@ impl AssetServiceTrait for AssetService {
         let asset = self.asset_repository.create(new_asset).await?;
 
         // Auto-classify the newly created asset
-        self.classify_new_asset(&asset.id, instrument_type.as_ref(), &kind)
+        self.classify_new_asset(&asset.id, instrument_type.as_ref(), None, None, &kind)
             .await;
 
         // Emit event for newly created asset
@@ -2531,12 +2538,21 @@ impl AssetServiceTrait for AssetService {
         );
 
         let instrument_type = new_asset.instrument_type.clone();
+        let name = new_asset.name.clone();
         let kind = new_asset.kind.clone();
         let asset = self.asset_repository.create(new_asset).await?;
 
         // Auto-classify the newly created asset
-        self.classify_new_asset(&asset.id, instrument_type.as_ref(), &kind)
-            .await;
+        self.classify_new_asset(
+            &asset.id,
+            instrument_type.as_ref(),
+            metadata
+                .as_ref()
+                .and_then(|m| m.instrument_type_label.as_deref()),
+            name.as_deref(),
+            &kind,
+        )
+        .await;
 
         // Emit event for newly created asset
         self.event_sink
@@ -3043,8 +3059,14 @@ impl AssetServiceTrait for AssetService {
                 });
                 if let Some(id) = asset_id {
                     if created_set.contains(id) {
-                        self.classify_new_asset(id, spec.instrument_type.as_ref(), &spec.kind)
-                            .await;
+                        self.classify_new_asset(
+                            id,
+                            spec.instrument_type.as_ref(),
+                            None,
+                            None,
+                            &spec.kind,
+                        )
+                        .await;
                     }
                 }
             }
@@ -5359,7 +5381,9 @@ mod tests {
         assert_eq!(output.exchange_mic.as_deref(), Some("XNAS"));
         assert_eq!(output.quote_ccy.as_deref(), Some("USD"));
         assert_eq!(output.provider_symbol.as_deref(), Some("AAPL"));
-        assert!(output.draft.is_some());
+        let draft = output.draft.expect("resolved asset draft");
+        assert_eq!(draft.instrument_symbol.as_deref(), Some("AAPL"));
+        assert_eq!(draft.metadata.unwrap()["identifiers"]["isin"], isin);
     }
 
     #[tokio::test]

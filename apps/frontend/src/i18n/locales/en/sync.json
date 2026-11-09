@@ -298,5 +298,29 @@
       "replace": "Replace the data on this device",
       "backup": "Back up this profile"
     }
+  },
+  "lan": {
+    "title": "Wi-Fi sync",
+    "description": "Sync this desktop and one mobile device on your local network.",
+    "nativeOnly": "Use the native desktop or mobile app.",
+    "status": "Connection status",
+    "join": "Join desktop",
+    "host": "Share from desktop",
+    "instructions": "Keep the desktop open and unlocked. Changes sync in both directions while the mobile app is visible.",
+    "paired": "Device paired",
+    "waiting": "Waiting for your mobile device",
+    "pending": "Initial import pending. Retry when the desktop is available.",
+    "stopped": "Desktop listener stopped. Start it again below.",
+    "lastSync": "Last sync:",
+    "address": "Desktop address and port",
+    "start": "Start / show invitation",
+    "privateCode": "This code grants access to your portfolio. Share it only with your own device.",
+    "invitation": "Private invitation",
+    "emptyProfile": "Join using an empty profile. The initial import copies the desktop portfolio. Existing mobile data is protected.",
+    "scan": "Scan QR",
+    "saveAddress": "Save address",
+    "syncNow": "Sync now",
+    "disconnect": "Disconnect",
+    "working": "Connecting and syncing…"
   }
 }

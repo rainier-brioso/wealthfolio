@@ -61,6 +61,7 @@ impl CashLedgerActivity {
     fn cash_inputs(&self) -> ActivityCashInputs<'_> {
         ActivityCashInputs {
             activity_type: self.effective_type(),
+            subtype: self.subtype.as_deref(),
             currency: &self.currency,
             is_security_transfer: is_securities_transfer(
                 self.effective_type(),

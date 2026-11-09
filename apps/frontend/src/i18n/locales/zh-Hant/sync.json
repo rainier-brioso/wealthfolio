@@ -298,5 +298,29 @@
       "replace": "取代此裝置上的資料",
       "backup": "備份此設定檔"
     }
+  },
+  "lan": {
+    "title": "Wi-Fi 同步",
+    "description": "在區域網路中同步此電腦和一台行動裝置。",
+    "nativeOnly": "請使用原生桌面或行動應用程式。",
+    "status": "連線狀態",
+    "join": "連接電腦",
+    "host": "從電腦分享",
+    "instructions": "請保持電腦應用程式開啟且已解鎖。行動應用程式可見時，變更會雙向同步。",
+    "paired": "裝置已配對",
+    "waiting": "等待行動裝置",
+    "pending": "等待首次匯入。電腦可用後請重試。",
+    "stopped": "電腦本機服務已停止。請在下方重新啟動。",
+    "lastSync": "上次同步：",
+    "address": "電腦位址與連接埠",
+    "start": "啟動 / 顯示邀請",
+    "privateCode": "此代碼可存取你的資產資料。僅與你自己的裝置分享。",
+    "invitation": "私人邀請",
+    "emptyProfile": "請使用空白設定檔連接。首次匯入會複製電腦上的投資組合。行動裝置現有資料受到保護。",
+    "scan": "掃描 QR 碼",
+    "saveAddress": "儲存位址",
+    "syncNow": "立即同步",
+    "disconnect": "中斷連線",
+    "working": "正在連接並同步…"
   }
 }

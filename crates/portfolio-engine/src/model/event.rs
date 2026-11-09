@@ -110,6 +110,11 @@ pub struct Charges {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Action {
     None,
+    AssetFee {
+        asset: AssetId,
+        #[serde(with = "crate::model::decimal_serde")]
+        quantity: Decimal,
+    },
     Trade {
         asset: AssetId,
         side: Side,

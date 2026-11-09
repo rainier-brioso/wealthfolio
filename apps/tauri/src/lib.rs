@@ -305,6 +305,8 @@ pub fn run() {
             commands::activity::get_transfer_pair_for_activity,
             commands::activity::find_transfer_match_candidates,
             commands::activity::save_internal_transfer_pair,
+            commands::activity::convert_to_internal_transfer,
+            commands::activity::review_convert_to_transfer_split_effects,
             commands::activity::link_transfer_activities,
             commands::activity::unlink_transfer_activities,
             commands::activity::check_activities_import,
@@ -347,6 +349,7 @@ pub fn run() {
             commands::spending::upsert_categorization_rule,
             commands::spending::delete_categorization_rule,
             commands::spending::rerun_categorization_rules,
+            commands::spending::rerun_categorization_rules_detailed,
             commands::spending::list_rule_presets,
             commands::spending::import_rule_preset,
             commands::spending::remove_rule_preset,
@@ -545,6 +548,7 @@ pub fn run() {
             commands::ai_providers::list_ai_models,
             // AI chat commands
             commands::ai_chat::stream_ai_chat,
+            commands::ai_chat::suggest_import_matches,
             commands::ai_chat::list_ai_threads,
             commands::ai_chat::get_ai_thread,
             commands::ai_chat::get_ai_thread_messages,
@@ -630,6 +634,12 @@ pub fn run() {
             #[cfg(feature = "connect-sync")]
             commands::brokers_sync::save_broker_sync_profile_rules,
             // Device sync commands
+            commands::lan_sync::lan_sync_status,
+            commands::lan_sync::lan_sync_host,
+            commands::lan_sync::lan_sync_join,
+            commands::lan_sync::lan_sync_tick,
+            commands::lan_sync::lan_sync_update_address,
+            commands::lan_sync::lan_sync_disconnect,
             #[cfg(feature = "device-sync")]
             commands::device_sync::get_device,
             #[cfg(feature = "device-sync")]

@@ -14,6 +14,22 @@ use wealthfolio_ai::{
 
 use super::error::CommandResult;
 
+#[tauri::command]
+pub async fn suggest_import_matches(
+    context: ProfileAccess,
+    request: wealthfolio_ai::import_matching::ImportMatchRequest,
+) -> CommandResult<wealthfolio_ai::import_matching::ImportMatchResponse> {
+    let context = context.context()?;
+    let service = context.ai_chat_service();
+    while_profile_active(
+        || context.is_active(),
+        service.suggest_import_matches(request),
+    )
+    .await
+    .ok_or_else(|| AiError::InvalidInput("Profile closed during AI matching".into()))?
+    .map_err(Into::into)
+}
+
 /// A stalled provider must release its profile context before database teardown
 /// times out. Reuse the runtime's activity flag, including during stream setup.
 async fn while_profile_active<T>(

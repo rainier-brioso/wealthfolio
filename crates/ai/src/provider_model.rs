@@ -1,7 +1,10 @@
 //! AI provider domain models.
 
 use serde::{Deserialize, Serialize};
+
 use std::collections::HashMap;
+
+pub const CUSTOM_PROVIDER_ID: &str = "custom";
 
 /// Preserve the distinction between an omitted update field and an explicit
 /// `null`, which clears the stored value.

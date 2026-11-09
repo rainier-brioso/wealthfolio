@@ -329,7 +329,8 @@
   "operations": {
     "more_details": "Más detalles",
     "unlink_transfer": "Desvincular transferencia",
-    "link_transfer": "Vincular transferencia..."
+    "link_transfer": "Vincular transferencia...",
+    "convert_to_transfer": "Convertir en transferencia..."
   },
   "date_sheet": {
     "title": "Actividades del {{date}}",
@@ -471,7 +472,17 @@
     "error_search": "No se pudieron buscar las actividades.",
     "within_days_one": "Dentro de {{count}} día",
     "within_days_other": "Dentro de {{count}} días",
-    "within_days_many": "Dentro de {{count}} días"
+    "within_days_many": "Dentro de {{count}} días",
+    "convert_title": "Convertir en transferencia",
+    "convert_desc": "Convierte esta actividad en una transferencia entre tus cuentas. Elige la actividad correspondiente en la otra cuenta o créala allí.",
+    "convert_no_matches": "No hay actividad coincidente en 7 días.",
+    "convert_new": "Crearla en otra cuenta",
+    "convert_removes_split": "Al convertirla en transferencia se elimina la división.",
+    "convert_account": "Otra cuenta",
+    "convert_amount": "Importe en {{currency}}",
+    "convert_button": "Convertir en transferencia",
+    "convert_success": "Convertida en transferencia",
+    "convert_error": "No se pudo convertir en transferencia"
   },
   "form": {
     "section_conversion": "Traspaso",
@@ -1002,7 +1013,10 @@
       "allRowsSkippedDescription": "Incluye al menos una fila para continuar.",
       "includeRow": "Incluir la fila {{line}}",
       "includeAllRows": "Incluir todas las filas",
-      "includeMatchingRows": "Incluir todas las filas coincidentes"
+      "includeMatchingRows": "Incluir todas las filas coincidentes",
+      "fixedType": "Valor fijo: {{type}}",
+      "calculatedUnitPrice": "Calcular: importe / participaciones",
+      "calculatedUnitPriceHelp": "El precio se calcula con el importe y las participaciones del CSV. Si el importe es estimado, el precio también lo es. Revisa comisiones, retenciones y filas canceladas antes de confirmar. Un tipo fijo se aplica a todas las filas incluidas."
     },
     "csvViewer": {
       "status": "Estado",
@@ -1425,6 +1439,148 @@
       "transfer": "Transferencia de saldo / Anticipo de efectivo",
       "refund": "Reembolso / Abono",
       "interest": "Cargo por intereses"
+    },
+    "myInvestor": {
+      "title": "MyInvestor: efectivo y compras de fondos",
+      "description": "Relaciona cada compra finalizada con su cargo bancario real. Ambas cuentas se importarán juntas mediante transferencias internas. Se omiten las órdenes canceladas.",
+      "cashAccount": "Cuenta de efectivo (EUR)",
+      "companionOrders": "CSV de órdenes de compra de fondos",
+      "companionCash": "CSV de movimientos de efectivo",
+      "invalidFiles": "Revisa los CSV, las cuentas y las correspondencias. Cada orden finalizada necesita un cargo distinto en la misma divisa.",
+      "ordersCount": "Órdenes por relacionar: {{total}}",
+      "matchPurchase": "Cargo bancario de esta compra",
+      "chooseDebit": "Selecciona un cargo bancario",
+      "prepare": "Preparar importación conjunta",
+      "reviewCash": "El cargo bancario determina la fecha y el importe de la compra. Los demás movimientos requieren clasificación en Asignación. No se añade un saldo inicial."
+    },
+    "inversis": {
+      "title": "MyInvestor / Inversis",
+      "description": "Carga juntos los extractos de movimientos y operaciones de valores de Inversis. Revisa las actividades preparadas antes de importar.",
+      "files": "Archivos de Inversis (.xls)",
+      "fileCount": "{{total}} archivos seleccionados",
+      "cashAccount": "Cuenta de efectivo",
+      "singleAccount": "Efectivo e inversiones en {{account}}",
+      "cashAccountHelp": "Usa la cuenta de inversión para el efectivo o selecciona una cuenta de efectivo separada. Las compras asociadas incluirán las transferencias internas.",
+      "invalidFiles": "No se han podido leer estos archivos de Inversis. Comprueba el formato y los problemas indicados.",
+      "reading": "Leyendo archivos…",
+      "prepare": "Preparar actividades",
+      "preview": "Importación preparada",
+      "activitiesCount": "{{total}} actividades preparadas",
+      "controls": "Comprobación de saldos del extracto",
+      "diagnostics": "Problemas que revisar",
+      "opening": "Saldo inicial",
+      "closing": "Saldo final",
+      "useActivities": "Usar estas actividades",
+      "modeCsv": "CSV",
+      "modeInversis": "MyInvestor / Inversis",
+      "matchSecurity": "Asociar operación de valores con movimiento de efectivo",
+      "chooseMatch": "Selecciona el movimiento de efectivo",
+      "noActivities": "No se han preparado actividades.",
+      "modeLabel": "Formato de importación",
+      "csvMode": "CSV",
+      "mode": "MyInvestor / Inversis",
+      "errors": {
+        "invalid-control-balance": "El saldo del extracto no es válido.",
+        "incomplete-control-balances": "Falta el saldo inicial o final del extracto.",
+        "cash-balance-mismatch": "Los movimientos no cuadran con el saldo final del extracto.",
+        "unrecognized-html-export": "Formato de Inversis no reconocido.",
+        "missing-cash-rows": "Añade el archivo de movimientos de efectivo.",
+        "missing-security-rows": "Añade el archivo de operaciones de valores.",
+        "unsupported-security-operation": "Esta operación de valores todavía no está soportada.",
+        "invalid-security-row": "La fila de valores no es válida.",
+        "invalid-cash-row": "La fila de movimientos no es válida.",
+        "missing-funds-account": "Selecciona la cuenta de inversión.",
+        "same-cash-funds-account": "El efectivo y los valores usan la misma cuenta.",
+        "invalid-row-match": "El movimiento seleccionado no corresponde al tipo y sentido de esta operación.",
+        "cash-row-matched-more-than-once": "Un movimiento está asignado a más de una operación.",
+        "unsupported-currency-match": "Esta combinación de divisas todavía no está soportada.",
+        "unmatched-security-operation": "Selecciona el movimiento de efectivo de esta operación.",
+        "security-match-required": "Confirma el movimiento de efectivo de esta operación.",
+        "bank-amount-differs-from-security-net": "El cargo difiere del importe neto de valores. El cargo determina la liquidación; se conserva el precio del origen.",
+        "unsupported-cash-operation": "Esta operación de efectivo todavía no está soportada.",
+        "zero-opening-movement-skipped": "El marcador de apertura con importe cero se ha excluido de las actividades.",
+        "nonzero-opening-movement": "El movimiento de apertura tiene un importe distinto de cero y requiere revisión.",
+        "legacy-transfer-conflict": "Hay transferencias existentes que coinciden con el formato anterior de importación. Revísalas antes de continuar para evitar duplicados.",
+        "legacy-check-failed": "No se han podido comprobar las transferencias anteriores. La preparación queda bloqueada hasta completar esta comprobación.",
+        "prepared-cash-mismatch": "El efecto de las actividades preparadas en el efectivo no cuadra con los movimientos del origen.",
+        "partial-operation-group": "Una compra y sus transferencias están parcialmente duplicadas o excluidas. Revisa la operación y sus transferencias conjuntamente antes de importar.",
+        "trade-total-review": "{{isin}}: participaciones {{quantity}} × precio {{price}} no coincide con el importe neto {{amount}} {{currency}} (diferencia: {{difference}}). Se conservan los valores del fichero; requiere revisión tras importar."
+      },
+      "proposedMatch": "Asociación propuesta: confirma el importe y la divisa",
+      "confirmProposal": "Confirmar asociación",
+      "automaticMatch": "Asociado automáticamente",
+      "securityDates": "Operación: {{tradeDate}} · Liquidación: {{settlementDate}}",
+      "cashDates": "Operación: {{operationDate}} · Valor: {{valueDate}}",
+      "sourceRow": "{{file}} · Fila {{row}}",
+      "evidence": {
+        "date": {
+          "settlementValue": "La liquidación coincide con la fecha valor del efectivo",
+          "tradeOperation": "Coinciden las fechas de operación (criterio de respaldo)",
+          "other": "No coinciden las fechas correspondientes",
+          "settlement-value": "La liquidación coincide con la fecha valor del efectivo",
+          "trade-operation": "Coinciden las fechas de operación (criterio de respaldo)"
+        },
+        "name": {
+          "exact": "Coincide el nombre del instrumento",
+          "similar": "Nombre de instrumento similar: requiere revisión",
+          "different": "Los nombres de los instrumentos difieren"
+        },
+        "amountDifference": "Efectivo menos importe de valores: {{amount}}",
+        "fxRate": "Cambio de liquidación: 1 {{fromCurrency}} = {{rate}} {{toCurrency}}"
+      },
+      "settlementChecks": "Comprobación del efectivo preparado",
+      "settlementExpected": "Variación del origen",
+      "settlementActual": "Variación preparada",
+      "settlementBalanced": "Cuadra",
+      "settlementMismatch": "Diferencia",
+      "balanced": "Cuadra",
+      "unbalanced": "Diferencia",
+      "matchStatus": {
+        "unmatched": "Requiere selección",
+        "confirmation": "Requiere confirmación",
+        "matched": "Asociado"
+      },
+      "attentionOrder": "Primero se muestran los casos que requieren atención.",
+      "aiModel": "Modelo de IA",
+      "aiNoModel": "Configura y activa un modelo en Ajustes → Proveedores de IA.",
+      "aiPrivacy": "Analizar envía datos de estos archivos a {{provider}} ({{model}}). Las propuestas válidas se seleccionan para revisión y puedes cambiarlas.",
+      "aiNeedsTools": "Activa Tools para este modelo en los ajustes de IA.",
+      "aiAnalyzing": "Analizando…",
+      "aiAnalyze": "Analizar con IA",
+      "aiResult": "Propuestas: {{accepted}} · Descartadas: {{rejected}} · Sin resolver: {{abstained}}. Revisa las asociaciones seleccionadas antes de preparar las actividades.",
+      "aiFailed": "El análisis de IA falló o devolvió una respuesta inválida. Tus selecciones se han conservado.",
+      "aiProposal": "Propuesta de IA",
+      "aiTimeout": "El análisis superó el tiempo límite. Tus selecciones se han conservado.",
+      "aiInvalidResponse": "El modelo devolvió propuestas incompletas o inválidas. Tus selecciones se han conservado.",
+      "aiProviderFailure": "La petición al proveedor falló. Comprueba el modelo y el servidor. Tus selecciones se han conservado.",
+      "securityOperation": "Operación de valores",
+      "suggestedCashMovement": "Movimiento de efectivo sugerido",
+      "cashMovement": "Movimiento de efectivo",
+      "changeMovement": "Cambiar movimiento",
+      "amountDifferenceShort": "Diferencia: {{amount}}",
+      "ruleProposal": "Propuesta de las reglas",
+      "selectionHelp": "Las propuestas ya están seleccionadas. Puedes cambiar o quitar cualquier asociación antes de preparar las actividades. No se guarda nada hasta la importación final."
+    },
+    "santander": {
+      "title": "Santander pensiones (PDF)",
+      "description": "Importa uno o varios extractos trimestrales. Solo se importan las operaciones que aparecen; no se añaden las participaciones del saldo inicial. La lectura del PDF y el OCR son locales. No se descuenta dinero de ninguna cuenta bancaria.",
+      "files": "Extractos trimestrales (.pdf)",
+      "reading": "Leyendo localmente: {{progress}}%",
+      "error": "No se ha podido verificar el extracto. No se han preparado actividades. Comprueba el PDF y el problema indicado.",
+      "accountError": "Mantén todas las actividades en la cuenta del plan seleccionada.",
+      "quoteError": "Las actividades pueden estar guardadas, pero no se ha podido guardar el precio de cierre. Revisa los precios y reintenta sin forzar duplicados."
+    },
+    "kraken": {
+      "title": "Kraken Spot",
+      "description": "Importa los CSV de ledger y trades de Kraken Spot conservando sus divisas originales. Las retiradas de criptomonedas se enlazan con la cuenta wallet que selecciones.",
+      "files": "Archivos CSV de Kraken (movimientos y operaciones)",
+      "walletAccount": "Cuenta de destino de la wallet",
+      "walletHelp": "Solo necesitas seleccionar una wallet si el extracto contiene retiradas de criptomonedas. Se importarán ambos lados del traspaso.",
+      "reading": "Leyendo y conciliando los archivos de Kraken…",
+      "error": "No se pudieron conciliar los archivos de Kraken. No se prepararon operaciones. Comprueba los archivos y el código del error.",
+      "prepared": "{{purchases}} compras y {{total}} operaciones preparadas. Saldos iniciales y finales por activo:",
+      "walletPlaceholder": "Selecciona la cuenta wallet",
+      "walletEmpty": "Para registrar retiradas de criptomonedas, crea una cuenta de inversión activa con seguimiento por operaciones para tu wallet."
     }
   },
   "validation": {
@@ -1470,5 +1626,22 @@
     "external": "Transferencia externa",
     "direction": "Dirección de transferencia",
     "mode": "Modo de transferencia"
-  }
+  },
+  "sourceReconciliation": {
+    "title": "Diferencia de liquidación MyInvestor/Inversis",
+    "description": "Datos originales de la importación. Las ediciones posteriores no cambian estos valores.",
+    "reviewed": "Revisada",
+    "tradeDate": "Fecha de operación",
+    "settlementDate": "Fecha de liquidación",
+    "reference": "Referencia de la operación",
+    "quantity": "Participaciones originales",
+    "unitPrice": "Precio unitario original",
+    "sourceAmount": "Importe neto del fichero",
+    "settledAmount": "Importe liquidado",
+    "calculatedAmount": "Participaciones × precio",
+    "difference": "Diferencia (liquidado − calculado)",
+    "reason": "Causa no determinada. Esta diferencia no se registra como un gasto adicional.",
+    "link": "Conversación relacionada (Rankia)"
+  },
+  "subtype_fee_in_kind": "Comisión pagada en activo"
 }

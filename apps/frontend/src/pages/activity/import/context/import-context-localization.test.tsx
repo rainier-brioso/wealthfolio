@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { FormattingProvider } from "@wealthfolio/ui";
 import enActivity from "@/i18n/locales/en/activity.json";
 import zhActivity from "@/i18n/locales/zh/activity.json";
-import type { ImportMappingData } from "@/lib/types";
+import type { ActivityImport, ImportMappingData } from "@/lib/types";
 import { ImportProvider, useImportContext, type DraftActivity } from "./import-context";
 import { ReviewStep } from "../steps/review-step";
 import { formatDraftErrors } from "../utils/draft-validation-messages";
@@ -84,6 +84,81 @@ beforeEach(async () => {
   vi.clearAllMocks();
   i18n.addResourceBundle("zh", "activity", zhActivity, true, true);
   await i18n.changeLanguage("en");
+});
+
+it("replaces CSV state with source drafts and clears them when source input changes", async () => {
+  await renderReview();
+  act(() =>
+    context.dispatch({
+      type: "SET_SOURCE_IMPORT",
+      payload: { sourceId: "myinvestor-inversis", drafts: [draft] },
+    }),
+  );
+  expect(context.state.sourceImport?.sourceId).toBe("myinvestor-inversis");
+  expect(context.state.parsedRows).toEqual([]);
+  expect(context.state.mapping).toBeNull();
+  expect(context.state.draftActivities).toEqual([draft]);
+  act(() => context.dispatch({ type: "CLEAR_SOURCE_IMPORT" }));
+  expect(context.state.sourceImport).toBeNull();
+  expect(context.state.draftActivities).toEqual([]);
+  expect(context.state.lastValidatedRevision).toBeNull();
+});
+
+it("blocks a source operation when backend duplicate checks exclude only its trade", async () => {
+  await renderReview();
+  const sourceDrafts: DraftActivity[] = ["BUY", "TRANSFER_IN", "TRANSFER_OUT"].map(
+    (activityType, rowIndex) => ({
+      ...draft,
+      activityType,
+      rowIndex,
+      sourceOperationGroup: "inversis-operation-1",
+    }),
+  );
+  act(() =>
+    context.dispatch({
+      type: "SET_SOURCE_IMPORT",
+      payload: {
+        sourceId: "myinvestor-inversis",
+        drafts: sourceDrafts,
+      },
+    }),
+  );
+  mocks.check.mockImplementation(({ activities }: { activities: ActivityImport[] }) =>
+    Promise.resolve(
+      activities.map((activity) => ({
+        ...activity,
+        isValid: true,
+        errors: {},
+        ...(activity.activityType === "BUY" ? { duplicateOfId: "existing-buy" } : {}),
+      })),
+    ),
+  );
+  await act(async () => {
+    expect(await context.validateDrafts(context.state.draftActivities)).toEqual({
+      ok: true,
+      hasErrors: true,
+    });
+  });
+  expect(context.state.validationError).toEqual({
+    key: "activity:import.inversis.errors.partial-operation-group",
+  });
+  mocks.check.mockImplementation(({ activities }: { activities: ActivityImport[] }) =>
+    Promise.resolve(
+      activities.map((activity) => ({
+        ...activity,
+        isValid: true,
+        errors: {},
+        duplicateOfId: `existing-${activity.lineNumber}`,
+      })),
+    ),
+  );
+  await act(async () => {
+    expect(await context.validateDrafts(context.state.draftActivities)).toEqual({
+      ok: true,
+      hasErrors: false,
+    });
+  });
+  expect(context.state.validationError).toBeNull();
 });
 afterEach(async () => {
   await act(() => i18n.changeLanguage("en"));

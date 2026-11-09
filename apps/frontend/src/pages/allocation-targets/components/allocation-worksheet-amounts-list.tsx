@@ -1,4 +1,4 @@
-import { worksheetCategoryLabel } from "./allocation-worksheet-labels";
+import { useChangeArrow, worksheetCategoryLabel } from "./allocation-worksheet-labels";
 import { Button, Icons, useAmountFormatting, useNumberFormatting } from "@wealthfolio/ui";
 import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -316,8 +316,9 @@ function AmountRow({
   isPriceSyncing,
 }: AmountRowProps) {
   const { t } = useTranslation();
+  const arrow = useChangeArrow();
   const { formatAmount, formatPrice, currencyFractionDigits } = useAmountFormatting();
-  const { formatQuantity, decimalSeparator } = useNumberFormatting();
+  const { formatQuantity, decimalSeparator, formatPercent, formatDecimal } = useNumberFormatting();
   const {
     position,
     adjustment,
@@ -370,7 +371,10 @@ function AmountRow({
       : worksheetCategoryLabel(t, taxonomyId, exposure.categoryId, exposure.categoryName),
   );
   const classesText = position.categoryExposures
-    .map((exposure, index) => `${classNames[index]} ${Math.round(exposure.weightBps / 100)}%`)
+    .map(
+      (exposure, index) =>
+        `${classNames[index]} ${formatPercent(exposure.weightBps / 10000, { digits: 0 })}`,
+    )
     .join(", ");
   const classesId = `worksheet-classes-${position.assetId}`;
 
@@ -431,7 +435,7 @@ function AmountRow({
               <span className="text-sm leading-5 font-medium">{position.symbol}</span>
               {shareBps !== null && (
                 <span className="border-foreground text-2xs shrink-0 rounded border px-1 font-mono">
-                  {Math.round(shareBps / 100)}%
+                  {formatPercent(shareBps / 10000, { digits: 0 })}
                 </span>
               )}
             </div>
@@ -447,11 +451,21 @@ function AmountRow({
         <span className="text-end text-xs tabular-nums @[36rem]/positions:pt-2 @[36rem]/positions:text-start">
           {isChanged ? (
             <>
-              <span className="text-muted-foreground">{position.currentPct.toFixed(1)} → </span>
-              <span className="font-semibold">{projectedPct.toFixed(1)}%</span>
+              <span className="text-muted-foreground">
+                {formatDecimal(position.currentPct, {
+                  minimumFractionDigits: 1,
+                  maximumFractionDigits: 1,
+                })}{" "}
+                {arrow}{" "}
+              </span>
+              <span className="font-semibold">
+                {formatPercent(projectedPct / 100, { digits: 1 })}
+              </span>
             </>
           ) : (
-            <span className="text-muted-foreground">{position.currentPct.toFixed(1)}%</span>
+            <span className="text-muted-foreground">
+              {formatPercent(position.currentPct / 100, { digits: 1 })}
+            </span>
           )}
         </span>
 
@@ -721,9 +735,10 @@ function RowStatusCell({
       );
     case "placed":
       // With one account there is nothing to place: the row states where it sits.
+      // Account names read in their own direction, so a clipped one keeps its start.
       if (!canPlace) {
         return (
-          <span className="text-muted-foreground block truncate">
+          <span dir="auto" className="text-muted-foreground block truncate rtl:text-right">
             {accountNames.get(status.accountIds[0]) ?? t("allocation:worksheet.unknownAccount")}
           </span>
         );
@@ -731,9 +746,10 @@ function RowStatusCell({
       return (
         <button
           type="button"
+          dir="auto"
           aria-expanded={isExpanded}
           onClick={onToggleExpanded}
-          className={cn(linkClass, "text-muted-foreground")}
+          className={cn(linkClass, "text-muted-foreground rtl:text-right")}
         >
           {status.accountIds.length === 1
             ? (accountNames.get(status.accountIds[0]) ?? t("allocation:worksheet.unknownAccount"))

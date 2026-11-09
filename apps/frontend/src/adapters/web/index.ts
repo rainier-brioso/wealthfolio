@@ -1,4 +1,5 @@
 // Web adapter - Browser implementation
+export * from "./lan-sync";
 // This file re-exports shared modules and platform-specific modules
 
 import type { RunEnv } from "../types";
@@ -103,6 +104,8 @@ export {
   getImportTemplate,
   getBrokerSyncProfile,
   findTransferMatchCandidates,
+  convertToInternalTransfer,
+  reviewConvertToTransferSplitEffects,
   getTransferPairForActivity,
   getAccountImportMapping,
   linkAccountTemplate,
@@ -267,6 +270,7 @@ export {
   isSpendingEnabled,
   listCategorizationRules,
   rerunCategorizationRules,
+  rerunCategorizationRulesDetailed,
   SPEND_CATEGORY_KIND_TO_TAXONOMY_ID,
   TAXONOMY_ID_TO_SPEND_CATEGORY_KIND,
   updateCategorizationRule,
@@ -354,6 +358,7 @@ export {
 // AI Providers Commands
 export {
   getAiProviders,
+  suggestImportMatches,
   listAiModels,
   setDefaultAiProvider,
   updateAiProviderSettings,

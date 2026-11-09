@@ -279,6 +279,15 @@ impl CredentialStore for TauriEnginePorts {
     }
 
     async fn is_sync_allowed(&self) -> Result<bool, String> {
+        if self
+            .context
+            .secret_store
+            .get_secret(wealthfolio_core::secrets::LAN_SYNC_CONFIG_KEY)
+            .map_err(|e| e.to_string())?
+            .is_some()
+        {
+            return Ok(false);
+        }
         self.context.connect_service().has_device_sync().await
     }
 

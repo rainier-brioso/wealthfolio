@@ -1,5 +1,5 @@
 import { omitLocalDraftErrors } from "../utils/draft-validation-messages";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { motion } from "motion/react";
@@ -19,7 +19,10 @@ import { useActivityImportMutations } from "../hooks/use-activity-import-mutatio
 import { ImportAlert } from "../components/import-alert";
 import { createAsset } from "@/adapters";
 import { draftToActivityImport } from "../utils/draft-utils";
+import { hasPartialSourceOperation } from "../utils/source-operation-groups";
 import { buildNewAssetFromDraft } from "../utils/asset-review-utils";
+import { retainImportAssetIdentifiers } from "../utils/import-asset-identifiers";
+import { saveImportSourceQuotes } from "../utils/import-source-quotes";
 import type { ActivityType } from "@/lib/constants";
 import { Spinner } from "@wealthfolio/ui";
 
@@ -223,9 +226,10 @@ export function ConfirmStep() {
   const { t } = useTranslation();
   const [importError, setImportError] = useState<string | null>(null);
   const [isPreparingAssets, setIsPreparingAssets] = useState(false);
+  const sourceQuoteDrafts = useRef<DraftActivity[]>([]);
 
   const { confirmImportMutation } = useActivityImportMutations({
-    onSuccess: (_activities, result) => {
+    onSuccess: async (_activities, result) => {
       setImportError(null);
 
       // If the backend found validation errors, surface them in the review grid
@@ -257,6 +261,14 @@ export function ConfirmStep() {
       }
 
       const frontendSkipped = summary.skipped + summary.errors;
+      try {
+        await saveImportSourceQuotes(state.sourceImport?.quotes ?? [], sourceQuoteDrafts.current, {
+          allowActivityPrices: true,
+        });
+      } catch {
+        setImportError(t("activity:import.santander.quoteError"));
+        return;
+      }
       dispatch(
         setImportResult({
           success: result.summary.success,
@@ -330,6 +342,17 @@ export function ConfirmStep() {
   };
 
   const handleImport = async () => {
+    if (
+      state.sourceImport?.sourceId === "santander-pension" &&
+      state.draftActivities.some((draft) => draft.accountId !== state.accountId)
+    ) {
+      setImportError(t("activity:import.santander.accountError"));
+      return;
+    }
+    if (hasPartialSourceOperation(state.draftActivities)) {
+      setImportError(t("activity:import.inversis.errors.partial-operation-group"));
+      return;
+    }
     // Send valid, warning, and duplicate activities to the backend.
     // Duplicate-status rows with forceImport=true will have their idempotency key
     // cleared server-side so they bypass the DB unique constraint and are inserted.
@@ -347,6 +370,7 @@ export function ConfirmStep() {
     const createdAssetIdsByKey: Record<string, string> = {};
 
     try {
+      await retainImportAssetIdentifiers(draftsToImport);
       const pendingAssets = new Map<string, ReturnType<typeof buildNewAssetFromDraft>>();
 
       for (const pending of Object.values(state.pendingImportAssets)) {
@@ -377,15 +401,18 @@ export function ConfirmStep() {
 
       persistCreatedAssets(createdAssetIdsByKey);
 
-      const activitiesToImport = draftsToImport.map((draft) =>
-        draftToActivityImport({
-          ...draft,
-          assetId:
-            draft.assetId ||
-            (draft.importAssetKey ? createdAssetIdsByKey[draft.importAssetKey] : undefined) ||
-            (draft.assetCandidateKey ? createdAssetIdsByKey[draft.assetCandidateKey] : undefined),
-        }),
-      );
+      const resolvedDrafts = draftsToImport.map((draft) => ({
+        ...draft,
+        assetId:
+          draft.assetId ||
+          (draft.importAssetKey ? createdAssetIdsByKey[draft.importAssetKey] : undefined) ||
+          (draft.assetCandidateKey ? createdAssetIdsByKey[draft.assetCandidateKey] : undefined),
+      }));
+      await saveImportSourceQuotes(state.sourceImport?.quotes ?? [], resolvedDrafts, {
+        validateOnly: true,
+      });
+      sourceQuoteDrafts.current = resolvedDrafts;
+      const activitiesToImport = resolvedDrafts.map(draftToActivityImport);
 
       confirmImportMutation.mutate({ activities: activitiesToImport });
     } catch (error) {

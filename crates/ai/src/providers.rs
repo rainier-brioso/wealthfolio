@@ -15,7 +15,7 @@ use crate::error::AiError;
 use crate::model_families::non_catalog_capabilities;
 use crate::provider_model::{
     AiProviderSettings, CapabilityInfo, ConnectionField, ModelCapabilities, ProviderDefaultConfig,
-    ProviderTuning, AI_PROVIDER_SETTINGS_KEY,
+    ProviderTuning, AI_PROVIDER_SETTINGS_KEY, CUSTOM_PROVIDER_ID,
 };
 use crate::types::normalize_tools_allowlist;
 
@@ -351,11 +351,51 @@ impl<E: AiEnvironment> ProviderService<E> {
     /// Get the title model ID for a provider.
     /// Returns title_model_id if configured, otherwise falls back to default_model.
     pub fn get_title_model(&self, provider_id: &str) -> Option<String> {
-        PROVIDER_CATALOG.providers.get(provider_id).map(|p| {
-            p.title_model_id
-                .clone()
-                .unwrap_or_else(|| p.default_model.clone())
-        })
+        PROVIDER_CATALOG
+            .providers
+            .get(provider_id)
+            .map(|p| {
+                p.title_model_id
+                    .clone()
+                    .unwrap_or_else(|| p.default_model.clone())
+            })
+            .filter(|model| !model.is_empty())
+    }
+
+    /// A custom endpoint is opt-in and has no implicit destination or model.
+    pub(crate) fn validate_custom_request(
+        &self,
+        provider_id: &str,
+        model_id: &str,
+    ) -> Result<(), AiError> {
+        if provider_id != CUSTOM_PROVIDER_ID {
+            return Ok(());
+        }
+        let stored: AiProviderSettings = self
+            .env
+            .settings_service()
+            .get_setting_value(AI_PROVIDER_SETTINGS_KEY)
+            .map_err(|error| AiError::Internal(error.to_string()))?
+            .and_then(|value| serde_json::from_str(&value).ok())
+            .unwrap_or_default();
+        if !stored
+            .providers
+            .get(provider_id)
+            .is_some_and(|provider| provider.enabled)
+        {
+            return Err(AiError::InvalidInput(
+                "The custom provider is disabled".into(),
+            ));
+        }
+        crate::provider_urls::custom_provider_base_url(
+            self.get_provider_url(provider_id).as_deref(),
+        )?;
+        if model_id.trim().is_empty() {
+            return Err(AiError::InvalidInput(
+                "Select a model for the custom provider".into(),
+            ));
+        }
+        Ok(())
     }
 
     /// Get the tools allowlist for a provider.
@@ -597,6 +637,11 @@ mod tests {
         let catalog = &*PROVIDER_CATALOG;
 
         for (provider_id, provider) in &catalog.providers {
+            if provider_id == CUSTOM_PROVIDER_ID {
+                assert!(provider.default_model.is_empty());
+                assert!(provider.models.is_empty());
+                continue;
+            }
             assert!(
                 provider.models.contains_key(&provider.default_model),
                 "provider '{}' default_model '{}' is missing from models",

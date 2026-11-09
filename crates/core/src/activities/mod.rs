@@ -12,6 +12,7 @@ mod conversion_pairs;
 mod csv_parser;
 mod idempotency;
 mod import_run_model;
+mod source_reconciliation;
 mod transfer_pairs;
 
 #[cfg(test)]
@@ -33,13 +34,14 @@ pub use activities_model::{
     ActivitySearchResponseMeta, ActivitySplitEffect, ActivityStatus, ActivityType, ActivityUpdate,
     ActivityUpdatePreview, ActivityUpsert, AssetResolutionInput, BrokerActivityProfileConfig,
     BrokerProfileScope, BrokerSyncProfileData, BulkUpsertResult, CashBalanceScope,
-    FieldMappingValue, ImportActivitiesResult, ImportActivitiesSummary, ImportAssetCandidate,
-    ImportAssetPreviewItem, ImportAssetPreviewStatus, ImportMapping, ImportMappingData,
-    ImportTemplate, ImportTemplateData, ImportTemplateScope, ImportedActivityIdentity, IncomeData,
-    InternalTransferPairRequest, InternalTransferPairResponse, LinkedTransfer, NewActivity,
-    PrepareActivitiesResult, PreviewedActivityUpdate, SaveBrokerSyncProfileRulesRequest, Sort,
-    TemplateKind, TransferMatchCandidate, TransferMatchCandidateRequest, UnlinkedTransfer,
-    UnlinkedTransfers, UnlinkedTransfersRequest,
+    ConvertToTransferRequest, FieldMappingValue, ImportActivitiesResult, ImportActivitiesSummary,
+    ImportAssetCandidate, ImportAssetPreviewItem, ImportAssetPreviewStatus, ImportMapping,
+    ImportMappingData, ImportTemplate, ImportTemplateData, ImportTemplateScope,
+    ImportedActivityIdentity, IncomeData, InternalTransferPairRequest,
+    InternalTransferPairResponse, LinkedTransfer, NewActivity, PrepareActivitiesResult,
+    PreviewedActivityUpdate, SaveBrokerSyncProfileRulesRequest, Sort, TemplateKind,
+    TransferMatchCandidate, TransferMatchCandidateRequest, UnlinkedTransfer, UnlinkedTransfers,
+    UnlinkedTransfersRequest,
 };
 pub use activities_service::ActivityService;
 pub use activities_traits::{ActivityRepositoryTrait, ActivityServiceTrait};
@@ -62,6 +64,7 @@ pub use import_run_model::{
     ImportRun, ImportRunMode, ImportRunRepositoryTrait, ImportRunStatus, ImportRunSummary,
     ImportRunType, ReviewMode,
 };
+pub use source_reconciliation::SourceReconciliation;
 pub use transfer_pairs::{
     is_contribution_neutral_same_account_cash_fx_conversion, is_same_account_cash_fx_conversion,
     InvalidTransferGroup, TransferLinkState, TransferPair, TransferPairResolution,

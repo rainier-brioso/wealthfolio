@@ -155,7 +155,7 @@ pub async fn update_quote(
     handle: AppHandle,
 ) -> Result<(), String> {
     let context = state.context()?;
-    debug!("Updating quote: {:?}", quote);
+    debug!("Updating quote");
     context
         .quote_service()
         .update_quote(quote.clone())

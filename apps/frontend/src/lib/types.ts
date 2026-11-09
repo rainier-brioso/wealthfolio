@@ -423,6 +423,16 @@ export interface InternalTransferPairRequest {
   transferMode?: "cash";
 }
 
+/** Exactly one of `counterpartActivityId` or `counterpartAccountId` names the other side. */
+export interface ConvertToTransferRequest {
+  activityId: string;
+  counterpartActivityId?: string;
+  counterpartAccountId?: string;
+  /** Required when the other account's currency differs from the activity's. */
+  counterpartAmount?: string | number;
+  splitReview?: ActivitySplitEffect[];
+}
+
 export interface InternalTransferPairResponse {
   transferOut: Activity;
   transferIn: Activity;
@@ -1397,6 +1407,7 @@ export interface NewAsset {
   providerSymbol?: string;
   providerConfig?: Record<string, unknown> | null;
   notes?: string;
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface ImportAssetCandidate {

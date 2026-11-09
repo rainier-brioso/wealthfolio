@@ -215,6 +215,41 @@ describe("calculated worksheet transport", () => {
 });
 
 describe("adapter command parity", () => {
+  it("routes detailed rule reruns without changing the numeric legacy response", async () => {
+    const summary = { matched: 1, changed: 0, incompatible: 1 };
+    const mock = stubFetch(summary);
+    expect(
+      await invoke("rerun_categorization_rules_detailed", { onlyUncategorized: false }),
+    ).toEqual(summary);
+    expect(lastCall(mock)).toEqual({
+      url: "/api/v1/spending/rules/rerun/detailed",
+      method: "POST",
+      body: JSON.stringify({ onlyUncategorized: false }),
+    });
+
+    stubFetch(1);
+    expect(await invoke("rerun_categorization_rules", { onlyUncategorized: true })).toBe(1);
+  });
+
+  it("routes stateless import matching with the selected model and context", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ proposals: [], rejectedCount: 0, abstainedCount: 0 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const request = {
+      providerId: "custom",
+      modelId: "selected-model",
+      context: { operations: [], movements: [], reserved: [], candidates: [] },
+    };
+    await invoke("suggest_import_matches", { request });
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/v1/ai/import-matches");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toEqual(request);
+  });
   it("registers every command reachable from the web adapter", () => {
     const files = [
       ...collectSourceFiles(path.join(frontendSrcDir, "adapters/shared")),

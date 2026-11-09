@@ -41,6 +41,17 @@ function createSingleDraft(row: string[]) {
   return draft;
 }
 
+it("creates a valid MyInvestor interest draft with a decimal comma", () => {
+  const draft = createSingleDraft(["13/09/2026", "PERIODO 12/08/2026 12/09/2026", "0,04", "EUR"]);
+  expect(draft).toMatchObject({
+    activityType: ActivityType.INTEREST,
+    amount: "0.04",
+    currency: "EUR",
+    status: "valid",
+    errors: {},
+  });
+});
+
 function createSingleDraftWithMapping(row: string[], activityMappings: Record<string, string[]>) {
   const [draft] = createDraftActivities(
     [row],

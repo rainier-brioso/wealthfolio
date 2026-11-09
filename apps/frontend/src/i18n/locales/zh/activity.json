@@ -327,7 +327,8 @@
   "operations": {
     "more_details": "更多详情",
     "unlink_transfer": "取消关联转账",
-    "link_transfer": "关联转账……"
+    "link_transfer": "关联转账……",
+    "convert_to_transfer": "转为转账..."
   },
   "date_sheet": {
     "title": "{{date}} 的活动",
@@ -463,7 +464,17 @@
     "error_load_suggestions": "无法加载建议匹配项。",
     "error_load_pair": "无法加载关联的转账对。",
     "error_search": "无法搜索活动。",
-    "within_days_other": "{{count}} 天内"
+    "within_days_other": "{{count}} 天内",
+    "convert_title": "转为转账",
+    "convert_desc": "将此活动转为账户之间的转账。选择另一账户中对应的活动，或在该账户中创建。",
+    "convert_no_matches": "7 天内没有匹配的活动。",
+    "convert_new": "在另一账户中创建",
+    "convert_removes_split": "转为转账后将移除拆分。",
+    "convert_account": "另一账户",
+    "convert_amount": "{{currency}} 金额",
+    "convert_button": "转为转账",
+    "convert_success": "已转为转账",
+    "convert_error": "转为转账失败"
   },
   "form": {
     "section_conversion": "基金转换",
@@ -970,7 +981,10 @@
       "allRowsSkippedDescription": "请至少包含一行以继续。",
       "includeRow": "包含第 {{line}} 行",
       "includeAllRows": "包含所有行",
-      "includeMatchingRows": "包含所有匹配的行"
+      "includeMatchingRows": "包含所有匹配的行",
+      "fixedType": "Fixed value: {{type}}",
+      "calculatedUnitPrice": "Calculate: amount / quantity",
+      "calculatedUnitPriceHelp": "Price is calculated from the CSV amount and quantity. An estimated amount gives an estimated price. Review fees, taxes and cancelled rows before confirming. A fixed activity type applies to all included rows."
     },
     "csvViewer": {
       "status": "状态",
@@ -1357,6 +1371,148 @@
       "transfer": "余额转移 / 现金预借",
       "refund": "退款 / 入账",
       "interest": "利息费用"
+    },
+    "myInvestor": {
+      "title": "MyInvestor：现金与基金申购",
+      "description": "将每笔已完成的基金申购与实际银行扣款匹配。通过内部转账一起导入两个账户，已取消的订单将被排除。",
+      "cashAccount": "现金账户（EUR）",
+      "companionOrders": "基金申购订单 CSV",
+      "companionCash": "现金流水 CSV",
+      "invalidFiles": "请检查 CSV、账户和匹配关系。每笔已完成的订单都需要同币种的独立扣款。",
+      "ordersCount": "待匹配订单：{{total}}",
+      "matchPurchase": "此笔申购的银行扣款",
+      "chooseDebit": "选择银行扣款",
+      "prepare": "准备合并导入",
+      "reviewCash": "银行扣款决定申购日期和金额。其他现金流水仍需在映射步骤中分类。不会添加期初余额。"
+    },
+    "inversis": {
+      "title": "MyInvestor / Inversis",
+      "description": "Load the Inversis movements and securities operations exports together. Review the prepared activities before importing.",
+      "files": "Inversis exports (.xls)",
+      "fileCount": "{{total}} files selected",
+      "cashAccount": "Cash account",
+      "singleAccount": "Cash and investments in {{account}}",
+      "cashAccountHelp": "Use the investment account for cash, or select a separate cash account. Matched purchases then include internal transfers.",
+      "invalidFiles": "Could not read these Inversis exports. Check the file format and reported issues.",
+      "reading": "Reading files…",
+      "prepare": "Prepare activities",
+      "preview": "Prepared import",
+      "activitiesCount": "{{total}} activities prepared",
+      "controls": "Statement balance checks",
+      "diagnostics": "Issues to review",
+      "opening": "Opening balance",
+      "closing": "Closing balance",
+      "useActivities": "Use these activities",
+      "modeCsv": "CSV",
+      "modeInversis": "MyInvestor / Inversis",
+      "matchSecurity": "Match security operation to cash movement",
+      "chooseMatch": "Select the cash movement",
+      "noActivities": "No activities prepared.",
+      "modeLabel": "Import format",
+      "csvMode": "CSV",
+      "mode": "MyInvestor / Inversis",
+      "errors": {
+        "invalid-control-balance": "Invalid statement balance.",
+        "incomplete-control-balances": "Opening or closing statement balance is missing.",
+        "cash-balance-mismatch": "Statement movements do not reconcile to the closing balance.",
+        "unrecognized-html-export": "Unrecognized Inversis export.",
+        "missing-cash-rows": "Add the cash movements export.",
+        "missing-security-rows": "Add the securities operations export.",
+        "unsupported-security-operation": "This security operation is not supported.",
+        "invalid-security-row": "Invalid security operation row.",
+        "invalid-cash-row": "Invalid cash movement row.",
+        "missing-funds-account": "Select the investment account.",
+        "same-cash-funds-account": "Cash and securities use the same account.",
+        "invalid-row-match": "The selected cash movement does not fit this operation.",
+        "cash-row-matched-more-than-once": "A cash movement has been assigned to more than one operation.",
+        "unsupported-currency-match": "This currency combination is not supported.",
+        "unmatched-security-operation": "Select the cash movement for this security operation.",
+        "security-match-required": "Confirm the cash movement for this operation.",
+        "bank-amount-differs-from-security-net": "The cash charge differs from the security net amount. The cash charge determines settlement; the source price is preserved.",
+        "unsupported-cash-operation": "This cash operation is not supported.",
+        "zero-opening-movement-skipped": "The zero-value opening marker was excluded from activities.",
+        "nonzero-opening-movement": "The opening movement has a nonzero amount and requires review.",
+        "legacy-transfer-conflict": "Existing transfers match the previous import format. Review them before continuing to avoid duplicates.",
+        "legacy-check-failed": "Previous transfers could not be checked. Preparation is blocked until this check succeeds.",
+        "prepared-cash-mismatch": "The prepared cash effects do not reconcile to the source movements.",
+        "partial-operation-group": "A trade and its transfers are partly duplicated or excluded. Review the trade and its transfers together before importing.",
+        "trade-total-review": "{{isin}}：数量 {{quantity}} × 价格 {{price}} 与净额 {{amount}} {{currency}} 不符（差额：{{difference}}）。保留原始值，导入后需要审核。"
+      },
+      "proposedMatch": "建议匹配：请确认金额和币种",
+      "confirmProposal": "确认匹配",
+      "automaticMatch": "已自动匹配",
+      "securityDates": "Trade: {{tradeDate}} · Settlement: {{settlementDate}}",
+      "cashDates": "Operation: {{operationDate}} · Value: {{valueDate}}",
+      "sourceRow": "{{file}} · Row {{row}}",
+      "evidence": {
+        "date": {
+          "settlementValue": "Settlement date matches cash value date",
+          "tradeOperation": "Trade date matches cash operation date (fallback)",
+          "other": "No corresponding date match",
+          "settlement-value": "Settlement date matches cash value date",
+          "trade-operation": "Trade date matches cash operation date (fallback)"
+        },
+        "name": {
+          "exact": "Instrument name matches",
+          "similar": "Similar instrument name — review required",
+          "different": "Instrument names differ"
+        },
+        "amountDifference": "Cash minus securities amount: {{amount}}",
+        "fxRate": "Settlement exchange rate: 1 {{fromCurrency}} = {{rate}} {{toCurrency}}"
+      },
+      "settlementChecks": "Prepared cash checks",
+      "settlementExpected": "Source change",
+      "settlementActual": "Prepared change",
+      "settlementBalanced": "Balanced",
+      "settlementMismatch": "Mismatch",
+      "balanced": "Balanced",
+      "unbalanced": "Mismatch",
+      "matchStatus": {
+        "unmatched": "需要选择",
+        "confirmation": "需要确认",
+        "matched": "已匹配"
+      },
+      "attentionOrder": "需要处理的项目优先显示。",
+      "aiModel": "AI 模型",
+      "aiNoModel": "请在设置 → AI 提供商中配置并启用模型。",
+      "aiPrivacy": "分析会将这些文件的数据发送给 {{provider}}（{{model}}）。有效建议会被选中供您检查，您仍可更改。",
+      "aiNeedsTools": "请在 AI 设置中为此模型启用 Tools。",
+      "aiAnalyzing": "正在分析…",
+      "aiAnalyze": "使用 AI 分析",
+      "aiResult": "建议：{{accepted}} · 已排除：{{rejected}} · 未解决：{{abstained}}。准备活动前请检查已选关联。",
+      "aiFailed": "AI 分析失败或返回了无效响应。您的选择已保留。",
+      "aiProposal": "AI 建议",
+      "aiTimeout": "分析超过时间限制。您的选择已保留。",
+      "aiInvalidResponse": "模型返回了不完整或无效的建议。您的选择已保留。",
+      "aiProviderFailure": "向提供商发送请求失败。请检查模型和服务器。您的选择已保留。",
+      "securityOperation": "证券交易",
+      "suggestedCashMovement": "建议的现金流水",
+      "cashMovement": "现金流水",
+      "changeMovement": "更换流水",
+      "amountDifferenceShort": "差额：{{amount}}",
+      "ruleProposal": "规则建议",
+      "selectionHelp": "建议已选中。准备活动前可更改或取消任何关联。最终导入前不会保存任何数据。"
+    },
+    "santander": {
+      "title": "桑坦德养老金（PDF）",
+      "description": "导入一份或多份季度对账单。仅导入列出的交易，不添加期初持有份额。PDF与OCR均在本地处理，不扣除任何银行账户资金。",
+      "files": "季度对账单（.pdf）",
+      "reading": "本地读取：{{progress}}%",
+      "error": "无法核验对账单，未准备任何活动。请检查PDF和提示的问题。",
+      "accountError": "请将所有活动保留在所选养老金账户。",
+      "quoteError": "活动可能已保存，但收盘价未能保存。请检查价格并重试，不要强制导入重复项。"
+    },
+    "kraken": {
+      "title": "Kraken Spot",
+      "description": "Import Kraken Spot ledger and trade exports in their original currencies. Crypto withdrawals are linked to the wallet account you select.",
+      "files": "Kraken CSV exports (ledger and trades)",
+      "walletAccount": "Wallet destination account",
+      "walletHelp": "A wallet account is only required when the statement includes crypto withdrawals. Both transfer entries will be imported.",
+      "reading": "Reading and reconciling Kraken exports…",
+      "error": "The Kraken exports could not be reconciled. No activities were prepared. Check both files and the diagnostic code.",
+      "prepared": "{{purchases}} purchases and {{total}} activities prepared. Opening and closing balances by ledger asset:",
+      "walletPlaceholder": "Select a wallet account",
+      "walletEmpty": "For crypto withdrawals, create an active investment account with transaction tracking for your wallet."
     }
   },
   "validation": {
@@ -1402,5 +1558,22 @@
     "external": "外部转账",
     "direction": "转账方向",
     "mode": "转账模式"
-  }
+  },
+  "sourceReconciliation": {
+    "title": "MyInvestor/Inversis 结算差额",
+    "description": "导入时的原始数据。后续编辑不会改变这些值。",
+    "reviewed": "已审核",
+    "tradeDate": "交易日期",
+    "settlementDate": "结算日期",
+    "reference": "交易参考号",
+    "quantity": "原始数量",
+    "unitPrice": "原始单价",
+    "sourceAmount": "文件净额",
+    "settledAmount": "结算金额",
+    "calculatedAmount": "数量 × 价格",
+    "difference": "差额（结算 − 计算）",
+    "reason": "原因未确定。此差额不另记为费用。",
+    "link": "相关讨论（Rankia）"
+  },
+  "subtype_fee_in_kind": "Fee paid in asset"
 }

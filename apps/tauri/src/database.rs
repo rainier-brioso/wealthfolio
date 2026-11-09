@@ -946,6 +946,9 @@ impl DatabaseRuntime {
             let _ = worker.await;
         }
 
+        // Stop the opt-in LAN listener before releasing this profile's services.
+        context.lan_sync.stop().await;
+
         // A restore in progress starts engine and portfolio work; stop it before
         // stopping those. A replacement already handed to the writer still commits.
         #[cfg(feature = "device-sync")]

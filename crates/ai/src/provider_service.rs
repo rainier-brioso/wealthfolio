@@ -14,9 +14,9 @@ use crate::provider_model::{
     ListModelsResponse, MergedModel, MergedProvider, ModelCapabilities, ModelCapabilityOverrides,
     ProviderApiError, ProviderConfig, ProviderTuning, ProviderUserSettings,
     SetDefaultProviderRequest, UpdateProviderSettingsRequest, AI_PROVIDER_SETTINGS_KEY,
-    AI_PROVIDER_SETTINGS_SCHEMA_VERSION,
+    AI_PROVIDER_SETTINGS_SCHEMA_VERSION, CUSTOM_PROVIDER_ID,
 };
-use crate::provider_urls::openai_compatible_models_url;
+use crate::provider_urls::{custom_provider_base_url, openai_compatible_models_url};
 use crate::types::normalize_tools_allowlist;
 
 /// Service trait for AI provider operations.
@@ -360,6 +360,20 @@ impl AiProviderServiceTrait for AiProviderService {
             ));
         }
 
+        if request.provider_id == CUSTOM_PROVIDER_ID {
+            if let Some(url) = request
+                .custom_url
+                .as_deref()
+                .filter(|url| !url.trim().is_empty())
+            {
+                custom_provider_base_url(Some(url)).map_err(|error| {
+                    wealthfolio_core::errors::Error::Validation(ValidationError::InvalidInput(
+                        error.to_string(),
+                    ))
+                })?;
+            }
+        }
+
         let mut settings = self.load_user_settings();
 
         // Get or create provider settings
@@ -475,6 +489,17 @@ impl AiProviderServiceTrait for AiProviderService {
         let requires_api_key = self.provider_requires_api_key(provider_id);
         let api_key = self.get_api_key(provider_id);
         let base_url = self.get_custom_url(provider_id);
+        let base_url = if provider_id == CUSTOM_PROVIDER_ID {
+            Some(
+                custom_provider_base_url(base_url.as_deref()).map_err(|error| {
+                    ProviderApiError::ProviderError {
+                        message: error.to_string(),
+                    }
+                })?,
+            )
+        } else {
+            base_url
+        };
 
         // Check if API key is required but missing
         if requires_api_key && api_key.is_none() {
@@ -492,12 +517,16 @@ impl AiProviderServiceTrait for AiProviderService {
     }
 
     fn get_title_model(&self, provider_id: &str) -> Option<String> {
-        self.catalog.providers.get(provider_id).map(|p| {
-            // Use title_model_id if set, otherwise fall back to default_model
-            p.title_model_id
-                .clone()
-                .unwrap_or_else(|| p.default_model.clone())
-        })
+        self.catalog
+            .providers
+            .get(provider_id)
+            .map(|p| {
+                // Use title_model_id if set, otherwise fall back to default_model
+                p.title_model_id
+                    .clone()
+                    .unwrap_or_else(|| p.default_model.clone())
+            })
+            .filter(|model| !model.is_empty())
     }
 
     fn resolve_tuning(&self, provider_id: &str) -> ProviderTuning {
@@ -938,6 +967,45 @@ mod tests {
     }
 
     struct StoredSettings(String);
+
+    #[test]
+    fn custom_provider_needs_an_endpoint_but_not_a_key_or_catalog_model() {
+        let make = |providers: serde_json::Value| {
+            AiProviderService::new(
+                Arc::new(StoredSettings(
+                    json!({"schemaVersion":2,"providers":providers}).to_string(),
+                )),
+                Arc::new(crate::env::test_env::MockSecretStore::default()),
+                include_str!("ai_providers.json"),
+            )
+            .unwrap()
+        };
+        let unconfigured = make(json!({}));
+        assert!(unconfigured
+            .get_provider_config(CUSTOM_PROVIDER_ID)
+            .is_err());
+        let configured = make(
+            json!({"custom":{"enabled":true,"customUrl":"http://127.0.0.1:8080/v1","favoriteModels":["served-model"],"modelCapabilityOverrides":{"served-model":{"tools":true}}}}),
+        );
+        let config = configured.get_provider_config(CUSTOM_PROVIDER_ID).unwrap();
+        assert!(!config.requires_api_key);
+        assert!(config.api_key.is_none());
+        assert_eq!(config.base_url.as_deref(), Some("http://127.0.0.1:8080/v1"));
+        assert!(configured.get_title_model(CUSTOM_PROVIDER_ID).is_none());
+        let providers = configured.get_ai_providers().unwrap().providers;
+        let custom = providers
+            .iter()
+            .find(|p| p.id == CUSTOM_PROVIDER_ID)
+            .unwrap();
+        assert!(custom.default_model.is_empty());
+        let model = custom
+            .models
+            .iter()
+            .find(|m| m.id == "served-model")
+            .unwrap();
+        assert!(model.capabilities.tools);
+        assert!(!model.capabilities.vision);
+    }
 
     #[async_trait]
     impl SettingsRepositoryTrait for StoredSettings {
